@@ -55,8 +55,7 @@ int isUserConnected() {
 	return 0;
 }
 
-int waitForUser()
-{
+int waitForUser() {
 	// connect TCP
 	int newsockfd, clilen, n;
 	char buffer[256];
@@ -153,11 +152,6 @@ int main(int argc, char *argv[]) {
 		printf("%s\n", folderName);
 		mkdir(folderName, 777);
 	}
-
-
-
-
-
 
 	while (1) {
 		int userSocket = waitForUser();

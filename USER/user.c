@@ -9,14 +9,14 @@
 #include <unistd.h>
 
 #define DEFAULT_PORT		1337
-#define DEFAULT_HOSTNAME	"localhost"
+#define DEFAULT_HOSTNAME	"192.168.43.196"
 #define MAX_INPUT_MSG_LENGTH	50 //TODO Change?
 int initClient(char* ip, int port) { //initialize connection, returns -2 on errors, otherwise socket
 	int sockfd;
 	struct sockaddr_in serv_addr;
-	sockfd = socket(AF_INET, SOCK_STREAM, 0);
+	sockfd = socket(PF_INET, SOCK_STREAM, 0);
 	if (sockfd < 0) //Error creating socket
-			{
+	{
 		return -1;
 	}
 
@@ -27,14 +27,44 @@ int initClient(char* ip, int port) { //initialize connection, returns -2 on erro
 
 	size_t addr_size = sizeof(serv_addr);
 	if (connect(sockfd, (struct sockaddr *) &serv_addr, addr_size) < 0) { //Error connecting
+		perror("Error starting connection \n");
 		return -1;
 	}
 
 	return sockfd;
 }
 
+void parseInputMsg(char* msg, int sockfd) { //Parse input msg and call appropriate function
+
+	const char s[2] = " ";
+	char *token;
+	token = strtok(msg, s); //Get first word from input
+
+	if (strcmp(token, "list_of_files") == 0) {
+		//list_of_files(sockfd);
+	} else if (strcmp(token, "delete_file") == 0) {
+	//	token = strtok(NULL, s);
+		//delete_file(sockfd, token);
+	} else if (strcmp(token, "add_file") == 0) {
+		//char* path = token = strtok(NULL, s);
+	//	char* filename = token = strtok(NULL, s);
+		//add_file(sockfd, path, filename);
+	} else if (strcmp(token, "get_file") == 0) {
+		//char* filename = token = strtok(NULL, s);
+	//	char* path = token = strtok(NULL, s);
+		//get_file(sockfd, filename, path);
+	} else if (strcmp(token, "quit") == 0) {
+		//quit(sockfd);
+	}
+
+	else {
+		printf("Error: unexpected message\n");
+	}
+
+}
+
 int main(int argc, char *argv[]) {
-	if ((argc != 3) || (argc != 1)) {
+	if ((argc != 3) && (argc != 1)) {
 		printf("should receive 2 or 0 cmd args. Received %d args", argc);
 	}
 
@@ -47,12 +77,10 @@ int main(int argc, char *argv[]) {
 		hostname = argv[1];
 		port = atoi(argv[2]);
 	}
-	int sockfd = initClient(hostname, port);
+	int sockfd = initClient(inet_pton(hostname), port);
 	if (sockfd == -1) {
-		printf("Error starting connection \n");
+		perror("Error starting connection \n");
 	}
-
-
 
 	//After welcome message from server
 	printf("User: ");
@@ -69,39 +97,7 @@ int main(int argc, char *argv[]) {
 		fgets(input, MAX_INPUT_MSG_LENGTH, stdin);
 	}
 
-	void parseInputMsg(char* msg, int sockfd) { //Parse input msg and call appropriate function
 
-		const char s[2] = " ";
-		char *token;
-		token = strtok(msg, s); //Get first word from input
-
-		switch (token) {
-		case "list_of_files":
-			list_of_files(sockfd);
-			break;
-		case "delete_file":
-			token = strtok(NULL, s);
-			delete_file(sockfd, token);
-			break;
-		case "add_file":
-			char* path = token = strtok(NULL, s);
-			char* filename = token = strtok(NULL, s);
-			add_file(sockfd, path, filename);
-			break;
-		case "get_file":
-			char* filename = token = strtok(NULL, s);
-			char* path = token = strtok(NULL, s);
-			get_file(sockfd, filename, path);
-			break;
-		case "quit":
-			quit(sockfd);
-			break;
-		default:
-			printf("Error: unexpected message\n");
-
-		}
-
-	}
 
 	void list_of_files() {
 
@@ -134,10 +130,8 @@ int main(int argc, char *argv[]) {
 	void quit(int socket) {
 		if (close(socket) == -1) {
 			printf("close failed \n");
-		}
-		else{
+		} else {
 			printf("close succeeded \n");
-			}
 		}
 	}
-
+}

@@ -8,8 +8,8 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
-#define DEFAULT_PORT		1337
-#define DEFAULT_HOSTNAME	"192.168.43.196"
+#define DEFAULT_PORT		10121
+#define DEFAULT_HOSTNAME	"localhost"
 #define MAX_INPUT_MSG_LENGTH	50 //TODO Change?
 int initClient(char* ip, int port) { //initialize connection, returns -2 on errors, otherwise socket
 	int sockfd;
@@ -22,13 +22,14 @@ int initClient(char* ip, int port) { //initialize connection, returns -2 on erro
 
 	serv_addr.sin_family = AF_INET;
 	serv_addr.sin_port = htons(port); // change?
-	serv_addr.sin_addr.s_addr = inet_addr(ip); //change?
+	serv_addr.sin_addr.s_addr = inet_addr("127.0.0.1"); //change?
 	bzero(&(serv_addr.sin_zero), 8);
+	//printf("Port is %d",port);
 
 	size_t addr_size = sizeof(serv_addr);
 	if (connect(sockfd, (struct sockaddr *) &serv_addr, addr_size) < 0) { //Error connecting
 		perror("Error starting connection \n");
-		return -1;
+		error(1);
 	}
 
 	return sockfd;
@@ -77,11 +78,14 @@ int main(int argc, char *argv[]) {
 		hostname = argv[1];
 		port = atoi(argv[2]);
 	}
-	int sockfd = initClient(inet_pton(hostname), port);
+	int sockfd = initClient(hostname, port);
 	if (sockfd == -1) {
 		perror("Error starting connection \n");
 	}
-
+	char test [10];
+	test[0]='a';
+	int charsWritten = write(sockfd,test,1);
+	printf("%d\n",charsWritten);
 	//After welcome message from server
 	printf("User: ");
 	scanf("%s", username);

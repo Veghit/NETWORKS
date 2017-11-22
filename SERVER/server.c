@@ -1,4 +1,4 @@
-#include "main.h"
+#include "server.h"
 
 #define MAX_USERS 15
 #define MAX_FILES_PER_USER 15
@@ -71,7 +71,7 @@ int isUserConnected() {
 	return 0;
 }
 
-int waitForUser() {
+int waitForUser (int port) {
 	// connect TCP
 	int newsockfd, clilen, n;
 	char buffer[256];
@@ -85,7 +85,7 @@ int waitForUser() {
 	struct sockaddr_in my_addr, cli_addr;
 
 	my_addr.sin_family = AF_INET;
-	my_addr.sin_port = htons(7000);
+	my_addr.sin_port = htons(port);
 	my_addr.sin_addr.s_addr = INADDR_ANY;
 
 	if (bind(sockfd, (struct sockaddr *) &my_addr, sizeof(my_addr)) < 0) {
@@ -187,10 +187,8 @@ int writeMsgToSocket(int socket, char msg[], int length) {
 	}
 	return 0;
 }
-int main(int argc, char *argv[]) {
+int main2(int argc, char *argv[]) {
 
-	//char cwd[1024];
-	//printf("%s",getcwd(cwd,sizeof(cwd)));
 
 	if ((argc != 3) && (argc != 4)) {
 		printf("should receive 3 or 4 cmd args. Received %d args", argc);
@@ -232,7 +230,7 @@ int main(int argc, char *argv[]) {
 	}
 
 	while (1) {
-		int userSocket = waitForUser();
+		int userSocket = waitForUser(port);
 		char msgType, userID, loggedIn;
 		char msg[BUFFER_SIZE];
 		loggedIn = 0;

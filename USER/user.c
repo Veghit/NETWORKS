@@ -1,10 +1,18 @@
-#include "aux.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <errno.h>
+#include <string.h>
+#include <netdb.h>
+#include <sys/types.h>
+#include <netinet/in.h>
+#include <sys/socket.h>
+#include <unistd.h>
 
-#define DEFAULT_PORT		1337
+//Test git
+
+#define DEFAULT_PORT		10121
 #define DEFAULT_HOSTNAME	"localhost"
 #define MAX_INPUT_MSG_LENGTH	50 //TODO Change?
-
-
 int initClient(char* ip, int port) { //initialize connection, returns -2 on errors, otherwise socket
 	int sockfd;
 	struct sockaddr_in serv_addr;
@@ -23,7 +31,7 @@ int initClient(char* ip, int port) { //initialize connection, returns -2 on erro
 	size_t addr_size = sizeof(serv_addr);
 	if (connect(sockfd, (struct sockaddr *) &serv_addr, addr_size) < 0) { //Error connecting
 		perror("Error starting connection \n");
-		error(1);
+		//error(1);
 	}
 
 	return sockfd;

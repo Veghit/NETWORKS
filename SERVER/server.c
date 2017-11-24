@@ -7,7 +7,7 @@ int parseUsersFile(char * users_file, char * users[]) {
 	FILE *file = fopen(fileName, "r");
 	char line[MAX_USERNAME_LENGTH + MAX_PASSWORD_LENGTH + 1];
 	while (fgets(line, sizeof(line), file)) {
-		printf("%s", line);
+		//printf("%s", line);
 		strcpy(users[n], line);
 		n += 1;
 	}
@@ -37,44 +37,56 @@ Message createHelloMessage() {
 Message createStatusMessage(char * username) {
 	int filesCount = 0;
 	DIR * dirp;
-	char * path = calloc(1,100);
-	sprintf(path,"SERVER/DATA/");//%s/",username);
+	char * path = calloc(1, 100);
+	sprintf(path, "SERVER/DATA/%s/", username);
 	//printf("trying to open %s",path);
+	struct dirent * entry;
 	dirp = opendir(path);
-	while(readdir(dirp)!=NULL){
-		filesCount++;
+	while ((entry = readdir(dirp)) != NULL) {
+		if (entry->d_type == DT_REG) {
+			filesCount++;
+		}
 	}
 	closedir(dirp);
-	char * str = calloc(1,100);
-	sprintf(str,"Hi %s, you have %d files stored.",username,filesCount);
+	char * str = calloc(1, 100);
+	sprintf(str, "Hi %s, you have %d files stored.", username, filesCount);
 
 	Message msg = createMessagefromString(statusMSG, str);
 	return msg;
 }
 
-Message createFileListMessage() {
-	return createMessagefromString(list_of_files_resMSG,
-			"Welcome! Please log in.");
+Message createFileListMessage(char * username) {
+	char * strList = calloc(1,MAX_FILES_PER_USER*(2+MAX_FILENAME));
+	DIR * dirp;
+	char * path = calloc(1, 100);
+	sprintf(path, "SERVER/DATA/%s/", username);
+	struct dirent * entry;
+	dirp = opendir(path);
+	while ((entry = readdir(dirp)) != NULL) {
+		if (entry->d_type == DT_REG) {
+			strcat(strList,"\n");
+			strcat(strList,entry->d_name);
+		}
+	}
+	closedir(dirp);
+	return createMessagefromString(list_of_files_resMSG,strList);
 }
 
-int deleteFile() {
+int deleteFile(char * username,char * filename) {
+	char * fullPath = calloc(1,MAX_USERNAME_LENGTH+MAX_FILENAME);
+	sprintf(fullPath,"SERVER/DATA/%s/%s",username,filename);
+	return remove(fullPath);
+}
+int addFile(char * username,char * filename, char * fileContent) {
+	char * fullPath = calloc(1,MAX_USERNAME_LENGTH+MAX_FILENAME);
+	sprintf(fullPath,"SERVER/DATA/%s/%s",username,filename);
+
 	return 0;
 }
-int addFile() {
-	return 0;
-}
-int getFile() {
-	return 0;
-}
-void userQuit() {
-}
+int getFile(char * username,char * filename) {
+	char * fullPath = calloc(1,MAX_USERNAME_LENGTH+MAX_FILENAME);
+	sprintf(fullPath,"SERVER/DATA/%s/%s",username,filename);
 
-int getUserID(char username[]) {
-
-	return -1;
-}
-
-int isUserConnected() {
 	return 0;
 }
 
@@ -132,9 +144,7 @@ char * formatLoginAttempt(char str[]) {
 }
 
 int main(int argc, char *argv[]) {
-	Message msg = createStatusMessage("Bob");
-	printf("%s",msg.value);
-	return 0;
+
 	if ((argc != 3) && (argc != 4)) {
 		printf("should receive 3 or 4 cmd args. Received %d args", argc);
 		return 1;
@@ -165,7 +175,7 @@ int main(int argc, char *argv[]) {
 		char * folderName = calloc(sizeof(char), 256);
 		strcat(folderName, "SERVER/DATA/");
 		strcat(folderName, getUserName(users, j));
-		mkdir(folderName, 777);
+		mkdir(folderName, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
 	}
 	int userSocket = -1;
 	Message inMsg;
@@ -183,33 +193,33 @@ int main(int argc, char *argv[]) {
 					userID = j;
 			}
 			if (userID != -1) {
+				username = getUserName(users, userID);
 				loggedIn = 1;
-				outMsg = createStatusMessage(userID);
+				outMsg = createStatusMessage(username);
 			} else
 				outMsg = createFailMessage();
 			free(loginAttempt);
 			break;
 		case list_of_filesMSG: // list_of_files request
 			if (loggedIn) {
-				username = getUserName(users, userID);
 				outMsg = createFileListMessage(username);
 			} else
 				outMsg = createFailMessage();
 			break;
 		case delete_fileMSG: // delete file request
-			if (loggedIn && (0 == deleteFile(userID)))
+			if (loggedIn && (0 == deleteFile(username,inMsg.value)))
 				outMsg = createSuccessMessage();
 			else
 				outMsg = createFailMessage();
 			break;
 		case transfer_fileMSG: // file_transfer (to server)
-			if (loggedIn && (0 == addFile(userID)))
+			if (loggedIn && (0 == addFile(username)))
 				outMsg = createSuccessMessage();
 			else
 				outMsg = createFailMessage();
 			break;
 		case get_fileMSG: // file_request (from server)
-			if (loggedIn && (0 == getFile(userID)))
+			if (loggedIn && (0 == getFile(username)))
 				outMsg = createSuccessMessage();
 			else
 				outMsg = createFailMessage();
@@ -226,6 +236,7 @@ int main(int argc, char *argv[]) {
 			outMsg = createHelloMessage();
 			loggedIn = 0;
 			userID = -1;
+			username = "";
 			break;
 		}
 		sendMessage(userSocket, outMsg); // reply to the user

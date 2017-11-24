@@ -22,8 +22,7 @@
 #ifndef MAIN_H_
 #define MAIN_H_
 
-
-int msgWrite(int,char msg[], char type, char * str);
+int msgWrite(int, char msg[], char type, char * str);
 int writeMsgToSocket(int socket, char msg[], int length);
 
 #endif /* MAIN_H_ */

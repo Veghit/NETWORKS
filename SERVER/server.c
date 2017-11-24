@@ -1,4 +1,4 @@
-#include "main.h"
+#include "server.h"
 
 #define MAX_USERS 15
 #define MAX_FILES_PER_USER 15
@@ -42,10 +42,11 @@ int sendHello(int socket, char msg[]) {
 }
 
 int sendStatus(int socket, char msg[], int userID) {
-	int filesCount = 0;
-	char * str = "Hi Bob, you have 6 files stored.";
+	int filesCount = 10;
+	char str [100]; //"Hi Bob, you have 6 files stored.";
+	asprintf(str,"Hi %s, you have %d files stored.", "Bob", 10); //getUserName(userID), filesCount);
+	printf("%s",str);
 	msgWrite(socket, msg, 2, str);
-	//printf("Hi %s, you have %d files stored.", getUserName(userID), filesCount);
 	return strlen(str) + 5;
 }
 
@@ -71,7 +72,7 @@ int isUserConnected() {
 	return 0;
 }
 
-int waitForUser() {
+int waitForUser(int port) {
 	// connect TCP
 	int newsockfd, clilen, n;
 	char buffer[256];
@@ -85,7 +86,7 @@ int waitForUser() {
 	struct sockaddr_in my_addr, cli_addr;
 
 	my_addr.sin_family = AF_INET;
-	my_addr.sin_port = htons(7000);
+	my_addr.sin_port = htons(port);
 	my_addr.sin_addr.s_addr = INADDR_ANY;
 
 	if (bind(sockfd, (struct sockaddr *) &my_addr, sizeof(my_addr)) < 0) {
@@ -170,7 +171,7 @@ int msgWrite(int userSocket, char msg[], char type, char * str) {
 	msg[3] = i / 256;
 	msg[4] = i % 256;
 
-	return writeMsgToSocket(userSocket, msg, i+5);
+	return writeMsgToSocket(userSocket, msg, i + 5);
 }
 
 int writeMsgToSocket(int socket, char msg[], int length) {
@@ -188,9 +189,6 @@ int writeMsgToSocket(int socket, char msg[], int length) {
 	return 0;
 }
 int main(int argc, char *argv[]) {
-
-	//char cwd[1024];
-	//printf("%s",getcwd(cwd,sizeof(cwd)));
 
 	if ((argc != 3) && (argc != 4)) {
 		printf("should receive 3 or 4 cmd args. Received %d args", argc);
@@ -232,7 +230,7 @@ int main(int argc, char *argv[]) {
 	}
 
 	while (1) {
-		int userSocket = waitForUser();
+		int userSocket = waitForUser(port);
 		char msgType, userID, loggedIn;
 		char msg[BUFFER_SIZE];
 		loggedIn = 0;
@@ -246,6 +244,7 @@ int main(int argc, char *argv[]) {
 			switch (msgType) {
 			case 1: // login message
 				userID = checkLogin(msg); // the first user gets the id 0. the 2nd user in the file gets id 1 and so on.
+				printf("%d",userID);
 				if (userID != -1) {
 					loggedIn = 1;
 					sendSuccess(userSocket, msg);
@@ -276,8 +275,7 @@ int main(int argc, char *argv[]) {
 			case 10: // quit
 				break;
 			default: // bad type
-				if(1==sendFail(userSocket, msg, "Bad message type."))
-				{
+				if (1 == sendFail(userSocket, msg, "Bad message type.")) {
 					perror("ERROR writing to socket");
 					exit(1);
 				}

@@ -18,6 +18,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <netdb.h>
+#include <dirent.h>
 
 #ifndef MAIN_H_
 #define MAIN_H_
@@ -28,6 +29,7 @@
 #define MAX_USERNAME_LENGTH 25
 #define MAX_PASSWORD_LENGTH 25
 #define BUFFER_SIZE 1000
+#define FILE_BUFFER_SIZE 1000
 
 typedef enum {
 	helloMSG,
@@ -51,6 +53,9 @@ typedef struct msg_t {
 	char protocol_id[2];
 } Message;
 
+void printMessage(Message msg);
+int sendMessage(int userSocket, Message msg);
+
 int sendMessage(int userSocket, Message msg) {
 	char buf[BUFFER_SIZE];
 	buf[0] = msg.protocol_id[0];
@@ -66,7 +71,7 @@ int sendMessage(int userSocket, Message msg) {
 	int bytesWritten = 0;
 	int result;
 	while (bytesWritten < msg.length) {
-		result = write(socket, msg.value + bytesWritten,
+		result = write(userSocket, buf[bytesWritten],
 				msg.length - bytesWritten);
 		if (result < 1) {
 			return 1;
@@ -84,6 +89,10 @@ Message createMessagefromString(message_type t, char* str) {
 	int i = 0;
 	while (str[i]) {
 		msg.value[i] = str[i];
+		i += 1;
+	}
+	while (i < 1000) {
+		msg.value[i] = 0;
 		i += 1;
 	}
 	msg.length = i;
@@ -113,7 +122,7 @@ Message receiveMessage(int socket) {
 	msg.protocol_id[1] = buf[1];
 	msg.msg_type = buf[2];
 	msg.length = buf[3] * 256 + buf[4];
-	if (msg.length>BUFFER_SIZE){
+	if (msg.length > BUFFER_SIZE) {
 		//perror("invalid message received.");
 		msg.msg_type = invalidMSG;
 		printMessage(msg);

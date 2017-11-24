@@ -101,6 +101,13 @@ Message createMessagefromString(message_type t, char* str) {
 	msg.protocol_id[1] = 0x1e;
 	return msg;
 }
+Message createMessagefromFile(message_type t, char* str1,char str2){
+	//need to finish
+	char str [MAX_FILENAME+MAX_FILE_SIZE];
+	strcat(str,str1);
+	str[strlen(str1)]=0;
+	createMessagefromString(t,str);
+}
 
 // This assumes buffer is at least x bytes long,
 // and that the socket is blocking.

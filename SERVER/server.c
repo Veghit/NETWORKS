@@ -56,7 +56,7 @@ Message createStatusMessage(char * username) {
 }
 
 Message createFileListMessage(char * username) {
-	char * strList = calloc(1,MAX_FILES_PER_USER*(2+MAX_FILENAME));
+	char * strList = calloc(1, MAX_FILES_PER_USER * (2 + MAX_FILENAME));
 	DIR * dirp;
 	char * path = calloc(1, 100);
 	sprintf(path, "SERVER/DATA/%s/", username);
@@ -64,28 +64,37 @@ Message createFileListMessage(char * username) {
 	dirp = opendir(path);
 	while ((entry = readdir(dirp)) != NULL) {
 		if (entry->d_type == DT_REG) {
-			strcat(strList,"\n");
-			strcat(strList,entry->d_name);
+			strcat(strList, "\n");
+			strcat(strList, entry->d_name);
 		}
 	}
 	closedir(dirp);
-	return createMessagefromString(list_of_files_resMSG,strList);
+	return createMessagefromString(list_of_files_resMSG, strList);
 }
 
-int deleteFile(char * username,char * filename) {
-	char * fullPath = calloc(1,MAX_USERNAME_LENGTH+MAX_FILENAME);
-	sprintf(fullPath,"SERVER/DATA/%s/%s",username,filename);
+int deleteFile(char * username, char * filename) {
+	char * fullPath = calloc(1, MAX_USERNAME_LENGTH + MAX_FILENAME);
+	sprintf(fullPath, "SERVER/DATA/%s/%s", username, filename);
 	return remove(fullPath);
 }
-int addFile(char * username,char * filename, char * fileContent) {
-	char * fullPath = calloc(1,MAX_USERNAME_LENGTH+MAX_FILENAME);
-	sprintf(fullPath,"SERVER/DATA/%s/%s",username,filename);
+int addFile(char * username, char * filename, char * fileContent) {
+	char * fullPath = calloc(1, MAX_USERNAME_LENGTH + MAX_FILENAME);
+	sprintf(fullPath, "SERVER/DATA/%s/%s", username, filename);
 
 	return 0;
 }
-int getFile(char * username,char * filename) {
-	char * fullPath = calloc(1,MAX_USERNAME_LENGTH+MAX_FILENAME);
-	sprintf(fullPath,"SERVER/DATA/%s/%s",username,filename);
+int getFile(char * username, char * filename, char * fileContent) {
+	char * fullPath = calloc(1, MAX_USERNAME_LENGTH + MAX_FILENAME);
+	sprintf(fullPath, "SERVER/DATA/%s/%s", username, filename);
+
+	FILE *file = fopen(fullPath, "r");
+
+	int i = 0;
+	while (fgetc(fileContent[i], 1, file)) {
+		//printf("%s", line);
+		i += 1;
+	}
+	fclose(file);
 
 	return 0;
 }
@@ -184,6 +193,7 @@ int main(int argc, char *argv[]) {
 	char userID = -1, loggedIn;
 	char * loginAttempt;
 	char * username;
+	char * buffer[MAX_FILE_SIZE];
 	while (1) { //server never stops
 		switch (inMsg.msg_type) {
 		case loginMSG: // login message
@@ -207,21 +217,22 @@ int main(int argc, char *argv[]) {
 				outMsg = createFailMessage();
 			break;
 		case delete_fileMSG: // delete file request
-			if (loggedIn && (0 == deleteFile(username,inMsg.value)))
+			if (loggedIn && (0 == deleteFile(username, inMsg.value)))
 				outMsg = createSuccessMessage();
 			else
 				outMsg = createFailMessage();
 			break;
 		case transfer_fileMSG: // file_transfer (to server)
-			if (loggedIn && (0 == addFile(username)))
+			if (loggedIn && (0 == addFile(username, inMsg.value, buffer)))
 				outMsg = createSuccessMessage();
 			else
 				outMsg = createFailMessage();
 			break;
 		case get_fileMSG: // file_request (from server)
-			if (loggedIn && (0 == getFile(username)))
-				outMsg = createSuccessMessage();
-			else
+			if (loggedIn && (0 == getFile(username, inMsg.value, buffer))) {
+				outMsg = createMessagefromFile(transfer_fileMSG, inMsg.value,
+						buffer);
+			} else
 				outMsg = createFailMessage();
 			break;
 		default:

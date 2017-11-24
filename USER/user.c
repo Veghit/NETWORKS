@@ -1,19 +1,9 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <errno.h>
-#include <string.h>
-#include <netdb.h>
-#include <sys/types.h>
-#include <netinet/in.h>
-#include <sys/socket.h>
-#include <unistd.h>
+#include "aux.h"
 
-//Test git
-
-#define DEFAULT_PORT		10121
+#define DEFAULT_PORT		1337
 #define DEFAULT_HOSTNAME	"localhost"
 #define MAX_INPUT_MSG_LENGTH	50 //TODO Change?
-int initClient(char* ip, int port) { //initialize connection, returns -2 on errors, otherwise socket
+int initClient(char* ip, int port) { //initialize connection, returns -1 on errors, otherwise socket
 	int sockfd;
 	struct sockaddr_in serv_addr;
 	sockfd = socket(PF_INET, SOCK_STREAM, 0);
@@ -31,7 +21,7 @@ int initClient(char* ip, int port) { //initialize connection, returns -2 on erro
 	size_t addr_size = sizeof(serv_addr);
 	if (connect(sockfd, (struct sockaddr *) &serv_addr, addr_size) < 0) { //Error connecting
 		perror("Error starting connection \n");
-		//error(1);
+		error(1);
 	}
 
 	return sockfd;
@@ -46,15 +36,15 @@ void parseInputMsg(char* msg, int sockfd) { //Parse input msg and call appropria
 	if (strcmp(token, "list_of_files") == 0) {
 		//list_of_files(sockfd);
 	} else if (strcmp(token, "delete_file") == 0) {
-	//	token = strtok(NULL, s);
+		//	token = strtok(NULL, s);
 		//delete_file(sockfd, token);
 	} else if (strcmp(token, "add_file") == 0) {
 		//char* path = token = strtok(NULL, s);
-	//	char* filename = token = strtok(NULL, s);
+		//	char* filename = token = strtok(NULL, s);
 		//add_file(sockfd, path, filename);
 	} else if (strcmp(token, "get_file") == 0) {
 		//char* filename = token = strtok(NULL, s);
-	//	char* path = token = strtok(NULL, s);
+		//	char* path = token = strtok(NULL, s);
 		//get_file(sockfd, filename, path);
 	} else if (strcmp(token, "quit") == 0) {
 		//quit(sockfd);
@@ -73,8 +63,8 @@ int main(int argc, char *argv[]) {
 
 	char* hostname = DEFAULT_HOSTNAME;
 	int port = DEFAULT_PORT;
-	char username[26] = "";
-	char password[26] = "";
+	char username[MAX_USERNAME_LENGTH] = "";
+	char password[MAX_PASSWORD_LENGTH] = "";
 
 	if (argc == 3) {
 		hostname = argv[1];
@@ -84,10 +74,10 @@ int main(int argc, char *argv[]) {
 	if (sockfd == -1) {
 		perror("Error starting connection \n");
 	}
-	char test [10];
-	test[0]='a';
-	int charsWritten = write(sockfd,test,1);
-	printf("%d\n",charsWritten);
+	char test[10];
+	test[0] = 'a';
+	int charsWritten = write(sockfd, test, 1);
+	printf("%d\n", charsWritten);
 	//After welcome message from server
 	printf("User: ");
 	scanf("%s", username);
@@ -103,41 +93,84 @@ int main(int argc, char *argv[]) {
 		fgets(input, MAX_INPUT_MSG_LENGTH, stdin);
 	}
 
+	void list_of_files(int Clientsocket) {
+		int status;
+		Message msg = createMessagefromString(list_of_filesMSG, NULL); //TODO check if I should replace NULL with an empty string
 
+		//Send request to server
+		status = sendMessage(Clientsocket, msg);
+		if (status == 0) {
+			perror("Error sending list_of_files msg");
+		}
 
-	void list_of_files() {
+		//Recieve response
+		Message responseMsg = receiveMessage(Clientsocket);
+		printf(responseMsg.value);
 
 	}
 
 	void add_file(char* path_to_file, char* newfilename) {
+		int status;
 		FILE *fp;
+
+		//Open the file and read its content into buffer
 		fp = fopen(path_to_file, "r");
-		// Save to server if successful return 1
-		if (1) {
-			printf("File added");
+		char* buffer = malloc(sizeof(char) * FILE_BUFFER_SIZE);
+		fread(buffer, sizeof(char), FILE_BUFFER_SIZE, fp);
+
+		Message msg = createMessagefromString(transfer_fileMSG, newfilename,
+				buffer); //TODO check if I should send two args or concatenate the name + file
+
+		//Send request to server
+		status = sendMessage(Clientsocket, msg);
+		if (status == 0) {
+			perror("Error sending transfer_fileMSG msg");
 		}
+
+		//Recieve response
+		Message responseMsg = receiveMessage(Clientsocket);
+		printf(responseMsg.value);
+
+		//Check result of recieved msg from server
+if	(responseMsg.msg_type == successMSG)) {
+		printf("File added");
+	} else {
+		printf("Error adding file");
 	}
 
-	void delete_file(char* filename) {
-		int success = 0;
-		//Delete filename from server
-		if (success) {
-			printf("File removed");
-		} else {
-			printf("No such file exists!");
-		}
+}
+}
+
+void delete_file(int Clientsocket, char* filename) {
+	int status;
+	//Send delete filename msg to server
+	Message msg = createMessagefromString(delete_fileMSG, filename);
+	status = sendMessage(Clientsocket, msg);
+	if (status == 0) {
+		perror("Error sending delete_file msg");
 	}
 
-	void get_file(char* file_name, char* path_to_save) {
-		//Get the file from server
+	//Recieve response
+	Message responseMsg = receiveMessage(Clientsocket);
 
-	}
+	//Check result of recieved msg from server
+if (responseMsg.msg_type == successMSG)) {
+	printf("File removed");
+} else {
+	printf("No such file exists!");
+}
+}
 
-	void quit(int socket) {
-		if (close(socket) == -1) {
-			printf("close failed \n");
-		} else {
-			printf("close succeeded \n");
-		}
+void get_file(char* file_name, char* path_to_save) {
+	//Get the file from server
+
+}
+
+void quit(int socket) {
+	if (close(socket) == -1) {
+		printf("close failed \n");
+	} else {
+		printf("close succeeded \n");
 	}
+}
 }

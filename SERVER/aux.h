@@ -29,8 +29,7 @@
 #define MAX_PASSWORD_LENGTH 25
 #define BUFFER_SIZE 1000
 
-typedef enum
-{
+typedef enum {
 	helloMSG,
 	loginMSG,
 	statusMSG,
@@ -41,7 +40,8 @@ typedef enum
 	failureMSG,
 	transfer_fileMSG,
 	get_fileMSG,
-	quitMSG
+	quitMSG,
+	invalidMSG
 } message_type;
 
 typedef struct msg_t {
@@ -51,7 +51,6 @@ typedef struct msg_t {
 	char protocol_id[2];
 } Message;
 
-
 int sendMessage(int userSocket, Message msg) {
 	char buf[BUFFER_SIZE];
 	buf[0] = msg.protocol_id[0];
@@ -60,30 +59,32 @@ int sendMessage(int userSocket, Message msg) {
 	buf[3] = msg.length / 256;
 	buf[4] = msg.length % 256;
 	int i = 0;
-	while (i<=msg.length) {
-		buf[5+i] = msg.value[i];
+	while (i <= msg.length) {
+		buf[5 + i] = msg.value[i];
 		i++;
 	}	// message was written to buffer and is ready to be sent.
 	int bytesWritten = 0;
 	int result;
 	while (bytesWritten < msg.length) {
-		result = write(socket, msg + bytesWritten, msg.length - bytesWritten);
+		result = write(socket, msg.value + bytesWritten,
+				msg.length - bytesWritten);
 		if (result < 1) {
 			return 1;
 		}
 		bytesWritten += result;
 	}
+	printMessage(msg);
+
 	return 0;
 }
 
-Message createMessagefromString(message_type t,char* str){
+Message createMessagefromString(message_type t, char* str) {
 	Message msg;
 	msg.msg_type = t;
-	int i=0;
-	while (str[i])
-	{
+	int i = 0;
+	while (str[i]) {
 		msg.value[i] = str[i];
-		i+=1;
+		i += 1;
 	}
 	msg.length = i;
 	msg.protocol_id[0] = 0x22;
@@ -102,16 +103,22 @@ Message receiveMessage(int socket) {
 	while (bytesRead < minLen) {
 		result = read(socket, buf + bytesRead, minLen - bytesRead);
 		if (result < 1) {
-			return 1;
+			perror("ERROR reading from socket.");
+			error(1);
 		}
 
 		bytesRead += result;
 	}
-
 	msg.protocol_id[0] = buf[0];
 	msg.protocol_id[1] = buf[1];
 	msg.msg_type = buf[2];
 	msg.length = buf[3] * 256 + buf[4];
+	if (msg.length>BUFFER_SIZE){
+		//perror("invalid message received.");
+		msg.msg_type = invalidMSG;
+		printMessage(msg);
+		return msg;
+	}
 
 	while (bytesRead < minLen + msg.length) {
 		result = read(socket, buf + bytesRead, minLen + msg.length - bytesRead);
@@ -128,9 +135,13 @@ Message receiveMessage(int socket) {
 		msg.value[i] = buf[i];
 		i++;
 	}
-
+	printMessage(msg);
 	return msg;
 }
 
+void printMessage(Message msg) {
+	printf("Protocol ID:%s, type:%c, length:%d, value:%s\n", msg.protocol_id,
+			msg.msg_type, msg.length, msg.value);
+}
 
 #endif /* MAIN_H_ */

@@ -1,4 +1,4 @@
-#include "aux.h"
+#include "../SERVER/aux.h"
 
 #define DEFAULT_PORT		1337
 #define DEFAULT_HOSTNAME	"localhost"

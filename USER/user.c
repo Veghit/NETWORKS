@@ -1,16 +1,10 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <errno.h>
-#include <string.h>
-#include <netdb.h>
-#include <sys/types.h>
-#include <netinet/in.h>
-#include <sys/socket.h>
-#include <unistd.h>
+#include "aux.h"
 
-#define DEFAULT_PORT		10121
+#define DEFAULT_PORT		1337
 #define DEFAULT_HOSTNAME	"localhost"
 #define MAX_INPUT_MSG_LENGTH	50 //TODO Change?
+
+
 int initClient(char* ip, int port) { //initialize connection, returns -2 on errors, otherwise socket
 	int sockfd;
 	struct sockaddr_in serv_addr;
@@ -64,7 +58,7 @@ void parseInputMsg(char* msg, int sockfd) { //Parse input msg and call appropria
 
 }
 
-int main2(int argc, char *argv[]) {
+int main(int argc, char *argv[]) {
 	if ((argc != 3) && (argc != 1)) {
 		printf("should receive 2 or 0 cmd args. Received %d args", argc);
 	}

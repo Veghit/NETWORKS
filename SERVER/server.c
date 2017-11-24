@@ -7,7 +7,7 @@ int parseUsersFile(char * users_file, char * users[]) {
 	FILE *file = fopen(fileName, "r");
 	char line[MAX_USERNAME_LENGTH + MAX_PASSWORD_LENGTH + 1];
 	while (fgets(line, sizeof(line), file)) {
-		//printf("%s", line);
+		printf("%s", line);
 		strcpy(users[n], line);
 		n += 1;
 	}
@@ -34,9 +34,20 @@ Message createHelloMessage() {
 	return msg;
 }
 
-Message createStatusMessage(int userID) {
-	//int filesCount = 0;
-	char * str = "Hi Bob, you have 6 files stored.";
+Message createStatusMessage(char * username) {
+	int filesCount = 0;
+	DIR * dirp;
+	char * path = calloc(1,100);
+	sprintf(path,"SERVER/DATA/");//%s/",username);
+	//printf("trying to open %s",path);
+	dirp = opendir(path);
+	while(readdir(dirp)!=NULL){
+		filesCount++;
+	}
+	closedir(dirp);
+	char * str = calloc(1,100);
+	sprintf(str,"Hi %s, you have %d files stored.",username,filesCount);
+
 	Message msg = createMessagefromString(statusMSG, str);
 	return msg;
 }
@@ -58,8 +69,9 @@ int getFile() {
 void userQuit() {
 }
 
-int checkLogin(char str[]) {
-	return 1;
+int getUserID(char username[]) {
+
+	return -1;
 }
 
 int isUserConnected() {
@@ -103,8 +115,26 @@ Message createSuccessMessage() {
 	return msg;
 }
 
-int main(int argc, char *argv[]) {
+char * formatLoginAttempt(char str[]) {
+	char * login = calloc(1, 100);
+	int i = 0;
+	while (str[i]) {
+		login[i] = str[i];
+		i = i + 1;
+	}
+	login[i] = '\t';
+	i = i + 1;
+	while (str[i] && i < 100) {
+		login[i] = str[i];
+		i = i + 1;
+	}
+	return login;
+}
 
+int main(int argc, char *argv[]) {
+	Message msg = createStatusMessage("Bob");
+	printf("%s",msg.value);
+	return 0;
 	if ((argc != 3) && (argc != 4)) {
 		printf("should receive 3 or 4 cmd args. Received %d args", argc);
 		return 1;
@@ -141,22 +171,29 @@ int main(int argc, char *argv[]) {
 	Message inMsg;
 	Message outMsg;
 	inMsg.msg_type = quitMSG; // we initiate to this value because after quitting we have the same state as in the beginning
-	char userID, loggedIn;
-
+	char userID = -1, loggedIn;
+	char * loginAttempt;
+	char * username;
 	while (1) { //server never stops
 		switch (inMsg.msg_type) {
 		case loginMSG: // login message
-			userID = checkLogin(inMsg.value); // the first user gets the id 0. the 2nd user in the file gets id 1 and so on.
+			loginAttempt = formatLoginAttempt(inMsg.value);
+			for (j = 0; j < usersNum; j++) {
+				if (0 == strcmp(loginAttempt, users[j]))
+					userID = j;
+			}
 			if (userID != -1) {
 				loggedIn = 1;
-				outMsg = createSuccessMessage();
+				outMsg = createStatusMessage(userID);
 			} else
 				outMsg = createFailMessage();
+			free(loginAttempt);
 			break;
 		case list_of_filesMSG: // list_of_files request
-			if (loggedIn)
-				outMsg = createFileListMessage(userID);
-			else
+			if (loggedIn) {
+				username = getUserName(users, userID);
+				outMsg = createFileListMessage(username);
+			} else
 				outMsg = createFailMessage();
 			break;
 		case delete_fileMSG: // delete file request

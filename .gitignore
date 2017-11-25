@@ -5,3 +5,5 @@ myserver
 myuser
 
 \.cproject
+/serverBuild
+/userBuild

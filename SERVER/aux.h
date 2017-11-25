@@ -102,9 +102,7 @@ Message createMessagefromString(message_type t, char* str) {
 	msg.protocol_id[1] = 0x1e;
 	return msg;
 }
-Message createMessagefromTwoStrings(message_type t, char* str1,
-		char * str2) {
-	//need to finish
+Message createMessagefromTwoStrings(message_type t, char* str1, char * str2) {
 	Message msg;
 	msg.msg_type = t;
 	int i = 0;
@@ -122,7 +120,7 @@ Message createMessagefromTwoStrings(message_type t, char* str1,
 	msg.length = i + j;
 
 	while (i + j < BUFFER_SIZE) {
-		msg.value[i] = 0;
+		msg.value[i + j] = 0;
 		i += 1;
 	}
 	msg.protocol_id[0] = 0x22;

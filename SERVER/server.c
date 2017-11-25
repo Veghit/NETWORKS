@@ -96,15 +96,16 @@ int getFile(char * username, char * filename, char * fileContent) {
 	fclose(file);
 	return 0;
 }
-int waitForUser(int port) {
-	printf("***Waiting for a user to connect***\n");
+int connectServer(int port) {
 	// connect TCP
-	int newsockfd, clilen;
+
 	int sockfd = socket(PF_INET, SOCK_STREAM, 0);
 	if (sockfd < 0) {
 		perror("ERROR on accept");
 		exit(1);
 	}
+	//if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &(int){ 1 }, sizeof(int)) < 0) // fix to bind problem.
+	//    error("setsockopt(SO_REUSEADDR) failed");
 	struct sockaddr_in my_addr, cli_addr;
 	my_addr.sin_family = AF_INET;
 	my_addr.sin_port = htons(port);
@@ -113,6 +114,13 @@ int waitForUser(int port) {
 		perror("ERROR on binding");
 		exit(1);
 	}
+	return sockfd;
+}
+
+int waitForUser(int sockfd) {
+	printf("***Waiting for a user to connect***\n");
+	struct sockaddr_in my_addr, cli_addr;
+	int newsockfd, clilen;
 	listen(sockfd, 5);
 	clilen = sizeof(cli_addr);
 	newsockfd = accept(sockfd, (struct sockaddr *) &cli_addr, &clilen);
@@ -180,6 +188,8 @@ int main(int argc, char *argv[]) {
 	char * loginAttempt;
 	char * username;
 	char * buffer[MAX_FILE_SIZE];
+	int serverSocket = connectServer(port);
+
 	while (1) { //server never stops
 		switch (inMsg.msg_type) {
 		case loginMSG: // login message
@@ -216,8 +226,8 @@ int main(int argc, char *argv[]) {
 			break;
 		case get_fileMSG: // file_request (from server)
 			if (loggedIn && (0 == getFile(username, inMsg.value, buffer))) {
-				outMsg = createMessagefromTwoStrings(transfer_fileMSG, inMsg.value,
-						buffer);
+				outMsg = createMessagefromTwoStrings(transfer_fileMSG,
+						inMsg.value, buffer);
 			} else
 				outMsg = createFailMessage();
 			break;
@@ -227,9 +237,10 @@ int main(int argc, char *argv[]) {
 				if (-1 == close(userSocket)) {
 					perror("could not close socket.");
 					exit(1);
-				}
+				} else
+					printf("user socket closed,\n");
 			}
-			userSocket = waitForUser(port);
+			userSocket = waitForUser(serverSocket);
 			outMsg = createHelloMessage();
 			loggedIn = 0;
 			userID = -1;

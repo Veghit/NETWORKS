@@ -70,141 +70,165 @@ int main(int argc, char *argv[]) {
 		hostname = argv[1];
 		port = atoi(argv[2]);
 	}
-	int sockfd = initClient(hostname, port);
-	if (sockfd == -1) {
+	int clientSocket = initClient(hostname, port);
+	if (clientSocket == -1) {
 		perror("Error starting connection \n");
 	}
-	char test[10];
-	test[0] = 'a';
-	int charsWritten = write(sockfd, test, 1);
-	printf("%d\n", charsWritten);
-	//After welcome message from server
-	printf("User: ");
+
+	//recieve hello msg from server
+	Message responseMsg = receiveMessage(clientSocket);
+	if (responseMsg.msg_type == helloMSG) {
+		printf("Welcome! Please log in. /n ");
+	}
+	if (responseMsg.msg_type != helloMSG) {
+		printf("Error recieveing hello msg /n ");
+	}
+
+	//Get login input from user and send login msg to server
+	printf("User: /n");
 	scanf("%s", username);
-	printf("Password: ");
+	printf("Password: /n");
 	scanf("%s", password);
-	//Msg response now
+	int status;
+	Message msg = createMessagefromTwoStrings(loginMSG, username, password);
+	//Send request to server
+	status = sendMessage(clientSocket, msg);
+	if (status == 0) {
+		perror("Error sending login msg");
+	}
+
+	//Recieve login result from server
+	responseMsg = receiveMessage(clientSocket);
+	if (responseMsg.msg_type == successMSG) {
+		responseMsg = receiveMessage(clientSocket); //receive status msg
+		printf("Hi Bob, you have 8 files stored /n "); //TODO edit
+	}
+	if (responseMsg.msg_type == failureMSG) {
+		printf("Authentication failed/n ");
+	}
 
 	//Get continuous input from user and call appropriate function
 	char input[MAX_INPUT_MSG_LENGTH];
 	fgets(input, MAX_INPUT_MSG_LENGTH, stdin);
 	while (strcmp(input, "quit\n") != 0) { //Keep getting input until "quit" is received
-		parseInputMsg(input, sockfd);
+		parseInputMsg(input, clientSocket);
 		fgets(input, MAX_INPUT_MSG_LENGTH, stdin);
 	}
 
-	void list_of_files(int clientSocket) {
-		int status;
-		Message msg = createMessagefromString(list_of_filesMSG, NULL); //TODO check if I should replace NULL with an empty string
-
-		//Send request to server
-		status = sendMessage(clientSocket, msg);
-		if (status == 0) {
-			perror("Error sending list_of_files msg");
-		}
-
-		//Recieve response
-		Message responseMsg = receiveMessage(clientSocket);
-		printf(responseMsg.value);
-
-	}
-
-	void add_file(int clientSocket, char* path_to_file, char* newfilename) {
-		int status;
-		FILE *fp;
-
-		//Open the file and read its content into buffer
-		fp = fopen(path_to_file, "r");
-		char* buffer = malloc(sizeof(char) * BUFFER_SIZE);
-		fread(buffer, sizeof(char), BUFFER_SIZE, fp);
-		fclose(fp);
-
-		char* fileNameAndContent = strcat(newfilename, path_to_file);
-		Message msg = createMessagefromString(transfer_fileMSG,
-				fileNameAndContent); //TODO check if I should send two args or concatenate the name + file
-
-		//Send request to server
-		status = sendMessage(clientSocket, msg);
-		if (status == 0) {
-			perror("Error sending transfer_fileMSG msg");
-		}
-
-		//Recieve response
-		Message responseMsg = receiveMessage(clientSocket);
-		printf(responseMsg.value);
-
-		//Check result of recieved msg from server
-		if (responseMsg.msg_type == successMSG) {
-			printf("File added");
-		} else {
-			printf("Error adding file");
-		}
-
-	}
+	quit(clientSocket);
 }
 
-void delete_file(int clientSocket, char* filename) {
+void list_of_files(int clientSocket) {
 	int status;
-	//Send delete filename msg to server
-	Message msg = createMessagefromString(delete_fileMSG, filename);
+	Message msg = createMessagefromString(list_of_filesMSG, NULL); //TODO check if I should replace NULL with an empty string
+
+	//Send request to server
 	status = sendMessage(clientSocket, msg);
 	if (status == 0) {
-		perror("Error sending delete_file msg");
+		perror("Error sending list_of_files msg");
 	}
 
 	//Recieve response
 	Message responseMsg = receiveMessage(clientSocket);
+	printf(responseMsg.value);
+
+}
+
+void add_file(int clientSocket, char* path_to_file, char* newFileName) {
+	int status;
+	FILE *fp;
+
+	//Open the file and read its content into buffer
+	fp = fopen(path_to_file, "r");
+	char* buffer = malloc(sizeof(char) * BUFFER_SIZE);
+	fread(buffer, sizeof(char), BUFFER_SIZE, fp);
+	fclose(fp);
+
+	Message msg = createMessagefromTwoStrings(transfer_fileMSG, newFileName,
+			path_to_file);
+
+	//Send request to server
+	status = sendMessage(clientSocket, msg);
+	if (status == 0) {
+		perror("Error sending transfer_fileMSG msg");
+	}
+
+	//Recieve response
+	Message responseMsg = receiveMessage(clientSocket);
+	printf(responseMsg.value);
 
 	//Check result of recieved msg from server
 	if (responseMsg.msg_type == successMSG) {
-		printf("File removed");
+		printf("File added");
 	} else {
-		printf("No such file exists!");
+		printf("Error adding file");
 	}
+
+}
+
+
+void delete_file(int clientSocket, char* filename) {
+int status;
+//Send delete filename msg to server
+Message msg = createMessagefromString(delete_fileMSG, filename);
+status = sendMessage(clientSocket, msg);
+if (status == 0) {
+	perror("Error sending delete_file msg");
+}
+
+//Recieve response
+Message responseMsg = receiveMessage(clientSocket);
+
+//Check result of recieved msg from server
+if (responseMsg.msg_type == successMSG) {
+	printf("File removed");
+} else {
+	printf("No such file exists!");
+}
 }
 
 void get_file(int clientSocket, char* file_name, char* path_to_save) {
 
-	int status;
-	//Send get file request to server
-	Message msg = createMessagefromString(get_fileMSG, file_name);
-	status = sendMessage(clientSocket, msg);
-	if (status == 0) {
-		perror("Error sending get_fileMSG msg");
-	}
+int status;
+//Send get file request to server
+Message msg = createMessagefromString(get_fileMSG, file_name);
+status = sendMessage(clientSocket, msg);
+if (status == 0) {
+	perror("Error sending get_fileMSG msg");
+}
 
-	//Recieve response from server
-	Message responseMsg = receiveMessage(clientSocket);
+//Recieve response from server
+Message responseMsg = receiveMessage(clientSocket);
 
-	//Check result of recieved msg from server
-	if (responseMsg.msg_type == failureMSG) {
-		printf("Error getting file");
-	} else {
-		//Get file content from server and save it
-		char* buffer = malloc(sizeof(char) * BUFFER_SIZE);
-		buffer = responseMsg.value; //Get file content into buffer
-		FILE *fp;
-		fp = fopen(path_to_save, "w");
-		fwrite(buffer, sizeof(char), BUFFER_SIZE, fp);
-		fclose(fp);
+//Check result of recieved msg from server
+if (responseMsg.msg_type == failureMSG) {
+	printf("Error getting file");
+} else {
+	//Get file content from server and save it
+	char* buffer = malloc(sizeof(char) * BUFFER_SIZE);
+	buffer = responseMsg.value; //Get file content into buffer
+	FILE *fp;
+	fp = fopen(path_to_save, "w");
+	fwrite(buffer, sizeof(char), BUFFER_SIZE, fp);
+	fclose(fp);
 
-		printf("File saved");
-	}
+	printf("File saved");
+}
 
 }
 
 void quit(int clientSocket) {
-	int status;
-	//Send quit msg to server
-	Message msg = createMessagefromString(quitMSG, "");
-	status = sendMessage(clientSocket, msg);
-	if (status == 0) {
-		perror("Error sending quitMSG msg");
-	}
-	if (close(socket) == -1) {
-		printf("close failed \n");
-	} else {
-		printf("close succeeded \n");
-	}
+int status;
+//Send quit msg to server
+Message msg = createMessagefromString(quitMSG, "");
+status = sendMessage(clientSocket, msg);
+if (status == 0) {
+	perror("Error sending quitMSG msg");
+}
+if (close(socket) == -1) {
+	printf("close failed \n");
+} else {
+	printf("close succeeded \n");
+}
 }
 

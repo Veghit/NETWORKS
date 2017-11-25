@@ -102,21 +102,21 @@ Message createMessagefromString(message_type t, char* str) {
 	msg.protocol_id[1] = 0x1e;
 	return msg;
 }
-Message createMessagefromFile(message_type t, char* fileName,
-		char * fileContent) {
+Message createMessagefromTwoStrings(message_type t, char* str1,
+		char * str2) {
 	//need to finish
 	Message msg;
 	msg.msg_type = t;
 	int i = 0;
-	while (fileName[i]) {
-		msg.value[i] = fileName[i];
+	while (str1[i]) {
+		msg.value[i] = str1[i];
 		i += 1;
 	}
 	msg.value[i] = 0;
 	i = i + 1;
 	int j = 0;
-	while (fileContent[j]) {
-		msg.value[i + j] = fileContent[j];
+	while (str2[j]) {
+		msg.value[i + j] = str2[j];
 		j += 1;
 	}
 	msg.length = i + j;

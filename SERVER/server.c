@@ -1,5 +1,4 @@
 #include "aux.h"
-
 int parseUsersFile(char * users_file, char * users[]) {
 
 	int n = 0;
@@ -14,7 +13,6 @@ int parseUsersFile(char * users_file, char * users[]) {
 	fclose(file);
 	return n;
 }
-
 char * getUserName(char * users[], int j) {
 	char * username = calloc(sizeof(char), 1 + MAX_USERNAME_LENGTH);
 	int i = 0;
@@ -27,13 +25,11 @@ char * getUserName(char * users[], int j) {
 	username[i + 1] = 0;
 	return username;
 }
-
 Message createHelloMessage() {
 	char * str = "Welcome! Please log in.";
 	Message msg = createMessagefromString(helloMSG, str);
 	return msg;
 }
-
 Message createStatusMessage(char * username) {
 	int filesCount = 0;
 	DIR * dirp;
@@ -54,7 +50,6 @@ Message createStatusMessage(char * username) {
 	Message msg = createMessagefromString(statusMSG, str);
 	return msg;
 }
-
 Message createFileListMessage(char * username) {
 	char * strList = calloc(1, MAX_FILES_PER_USER * (2 + MAX_FILENAME));
 	DIR * dirp;
@@ -71,7 +66,6 @@ Message createFileListMessage(char * username) {
 	closedir(dirp);
 	return createMessagefromString(list_of_files_resMSG, strList);
 }
-
 int deleteFile(char * username, char * filename) {
 	char * fullPath = calloc(1, MAX_USERNAME_LENGTH + MAX_FILENAME);
 	sprintf(fullPath, "SERVER/DATA/%s/%s", username, filename);
@@ -102,7 +96,6 @@ int getFile(char * username, char * filename, char * fileContent) {
 	fclose(file);
 	return 0;
 }
-
 int waitForUser(int port) {
 	printf("***Waiting for a user to connect***\n");
 	// connect TCP
@@ -129,17 +122,14 @@ int waitForUser(int port) {
 	}
 	return newsockfd;
 }
-
 Message createFailMessage() {
 	Message msg = createMessagefromString(failureMSG, "");
 	return msg;
 }
-
 Message createSuccessMessage() {
 	Message msg = createMessagefromString(successMSG, "");
 	return msg;
 }
-
 char * formatLoginAttempt(char str[]) {
 	char * login = calloc(1, MAX_PASSWORD_LENGTH + MAX_USERNAME_LENGTH + 1);
 	int i = 0;
@@ -155,9 +145,7 @@ char * formatLoginAttempt(char str[]) {
 	}
 	return login;
 }
-
 int main(int argc, char *argv[]) {
-
 	if ((argc != 3) && (argc != 4)) {
 		printf("should receive 3 or 4 cmd args. Received %d args", argc);
 		return 1;
@@ -166,24 +154,18 @@ int main(int argc, char *argv[]) {
 	char * users_file = argv[1];
 	//char * dir_path = argv[2];
 	char * users[MAX_USERS];
-
 	for (int i = 0; i < MAX_USERS; i++) {
 		users[i] = calloc(sizeof(char),
 		MAX_PASSWORD_LENGTH + MAX_USERNAME_LENGTH + 1);
 	}
-
 	int port = 1337;
 	if (argc == 4) {
 		port = atoi(argv[3]); // get port from cmd arg
 	}
-
 	// read users file
 	int usersNum = parseUsersFile(users_file, users);
-
 	// open a folder for each user
-
 	int j;
-
 	for (j = 0; j < usersNum; j++) {
 		char * folderName = calloc(sizeof(char), 256);
 		strcat(folderName, "SERVER/DATA/");
@@ -234,7 +216,7 @@ int main(int argc, char *argv[]) {
 			break;
 		case get_fileMSG: // file_request (from server)
 			if (loggedIn && (0 == getFile(username, inMsg.value, buffer))) {
-				outMsg = createMessagefromFile(transfer_fileMSG, inMsg.value,
+				outMsg = createMessagefromTwoStrings(transfer_fileMSG, inMsg.value,
 						buffer);
 			} else
 				outMsg = createFailMessage();
@@ -244,7 +226,7 @@ int main(int argc, char *argv[]) {
 					{
 				if (-1 == close(userSocket)) {
 					perror("could not close socket.");
-					error(1);
+					exit(1);
 				}
 			}
 			userSocket = waitForUser(port);

@@ -37,7 +37,7 @@ Message createHelloMessage() {
 Message createStatusMessage(char * username) {
 	int filesCount = 0;
 	DIR * dirp;
-	char * path = calloc(1, 100);
+	char * path = calloc(1, MAX_FILENAME);
 	sprintf(path, "SERVER/DATA/%s/", username);
 	//printf("trying to open %s",path);
 	struct dirent * entry;
@@ -48,7 +48,7 @@ Message createStatusMessage(char * username) {
 		}
 	}
 	closedir(dirp);
-	char * str = calloc(1, 100);
+	char * str = calloc(1, MAX_FILENAME);
 	sprintf(str, "Hi %s, you have %d files stored.", username, filesCount);
 
 	Message msg = createMessagefromString(statusMSG, str);
@@ -58,7 +58,7 @@ Message createStatusMessage(char * username) {
 Message createFileListMessage(char * username) {
 	char * strList = calloc(1, MAX_FILES_PER_USER * (2 + MAX_FILENAME));
 	DIR * dirp;
-	char * path = calloc(1, 100);
+	char * path = calloc(1, MAX_FILENAME);
 	sprintf(path, "SERVER/DATA/%s/", username);
 	struct dirent * entry;
 	dirp = opendir(path);
@@ -81,7 +81,10 @@ int addFile(char * username, char * filename, char * fileContent) {
 	char * fullPath = calloc(1, MAX_USERNAME_LENGTH + MAX_FILENAME);
 	sprintf(fullPath, "SERVER/DATA/%s/%s", username, filename);
 
-	return 0;
+	FILE *file = fopen(fullPath, "w");
+	int res = fputs(fileContent, file);
+	fclose(file);
+	return (res == EOF);
 }
 int getFile(char * username, char * filename, char * fileContent) {
 	char * fullPath = calloc(1, MAX_USERNAME_LENGTH + MAX_FILENAME);
@@ -90,12 +93,13 @@ int getFile(char * username, char * filename, char * fileContent) {
 	FILE *file = fopen(fullPath, "r");
 
 	int i = 0;
-	while (fgetc(fileContent[i], 1, file)) {
+	char cur;
+	while ((cur = fgetc(file)) != EOF) {
 		//printf("%s", line);
+		fileContent[i] = cur;
 		i += 1;
 	}
 	fclose(file);
-
 	return 0;
 }
 
@@ -137,7 +141,7 @@ Message createSuccessMessage() {
 }
 
 char * formatLoginAttempt(char str[]) {
-	char * login = calloc(1, 100);
+	char * login = calloc(1, MAX_PASSWORD_LENGTH + MAX_USERNAME_LENGTH + 1);
 	int i = 0;
 	while (str[i]) {
 		login[i] = str[i];
@@ -145,7 +149,7 @@ char * formatLoginAttempt(char str[]) {
 	}
 	login[i] = '\t';
 	i = i + 1;
-	while (str[i] && i < 100) {
+	while (str[i] && (i < MAX_PASSWORD_LENGTH + MAX_USERNAME_LENGTH + 1)) {
 		login[i] = str[i];
 		i = i + 1;
 	}
@@ -216,7 +220,7 @@ int main(int argc, char *argv[]) {
 			} else
 				outMsg = createFailMessage();
 			break;
-		case delete_fileMSG: // delete file request
+		case delete_fileMSG: // delete file from server request
 			if (loggedIn && (0 == deleteFile(username, inMsg.value)))
 				outMsg = createSuccessMessage();
 			else

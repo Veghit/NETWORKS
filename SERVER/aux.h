@@ -48,7 +48,7 @@ typedef enum {
 } message_type;
 
 typedef struct msg_t {
-	char value[1000];
+	char value[BUFFER_SIZE];
 	short length;
 	message_type msg_type;
 	char protocol_id[2];
@@ -92,21 +92,42 @@ Message createMessagefromString(message_type t, char* str) {
 		msg.value[i] = str[i];
 		i += 1;
 	}
-	while (i < 1000) {
+	msg.length = i;
+	while (i < BUFFER_SIZE) {
 		msg.value[i] = 0;
 		i += 1;
 	}
-	msg.length = i;
+
 	msg.protocol_id[0] = 0x22;
 	msg.protocol_id[1] = 0x1e;
 	return msg;
 }
-Message createMessagefromFile(message_type t, char* str1,char str2){
+Message createMessagefromFile(message_type t, char* fileName,
+		char * fileContent) {
 	//need to finish
-	char str [MAX_FILENAME+MAX_FILE_SIZE];
-	strcat(str,str1);
-	str[strlen(str1)]=0;
-	createMessagefromString(t,str);
+	Message msg;
+	msg.msg_type = t;
+	int i = 0;
+	while (fileName[i]) {
+		msg.value[i] = fileName[i];
+		i += 1;
+	}
+	msg.value[i] = 0;
+	i = i + 1;
+	int j = 0;
+	while (fileContent[j]) {
+		msg.value[i + j] = fileContent[j];
+		j += 1;
+	}
+	msg.length = i + j;
+
+	while (i + j < BUFFER_SIZE) {
+		msg.value[i] = 0;
+		i += 1;
+	}
+	msg.protocol_id[0] = 0x22;
+	msg.protocol_id[1] = 0x1e;
+	return msg;
 }
 
 // This assumes buffer is at least x bytes long,

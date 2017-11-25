@@ -142,7 +142,7 @@ Message receiveMessage(int socket) {
 		result = read(socket, buf + bytesRead, minLen - bytesRead);
 		if (result < 1) {
 			perror("ERROR reading from socket.");
-			error(1);
+			exit(1);
 		}
 
 		bytesRead += result;

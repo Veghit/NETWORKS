@@ -7,3 +7,11 @@ myuser
 \.cproject
 /serverBuild
 /userBuild
+
+\.project
+
+\.settings/
+
+SERVER/DATA/Bob/
+
+file_server

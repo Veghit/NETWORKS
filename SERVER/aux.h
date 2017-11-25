@@ -29,7 +29,7 @@
 #define MAX_USERNAME_LENGTH 25
 #define MAX_PASSWORD_LENGTH 25
 #define MAX_FILENAME 256
-#define BUFFER_SIZE 1000
+#define BUFFER_SIZE 1024
 #define FILE_BUFFER_SIZE 1000
 
 typedef enum {
@@ -55,9 +55,10 @@ typedef struct msg_t {
 } Message;
 
 void printMessage(Message msg);
-int sendMessage(int userSocket, Message msg);
 
 int sendMessage(int userSocket, Message msg) {
+	printf("trying to send:");
+	printMessage(msg);
 	char buf[BUFFER_SIZE];
 	buf[0] = msg.protocol_id[0];
 	buf[1] = msg.protocol_id[1];
@@ -71,14 +72,16 @@ int sendMessage(int userSocket, Message msg) {
 	}	// message was written to buffer and is ready to be sent.
 	int bytesWritten = 0;
 	int result;
-	while (bytesWritten < msg.length) {
-		result = write(userSocket, buf[bytesWritten],
-				msg.length - bytesWritten);
+	while (bytesWritten < 5 + msg.length) {
+		result = send(userSocket, &buf[bytesWritten],
+				5 + msg.length - bytesWritten, 0);
 		if (result < 1) {
-			return 1;
+			perror("ERROR writing to socket.");
+			exit(1);
 		}
 		bytesWritten += result;
 	}
+	printf("sent:");
 	printMessage(msg);
 
 	return 0;
@@ -140,7 +143,10 @@ Message receiveMessage(int socket) {
 		result = read(socket, buf + bytesRead, minLen - bytesRead);
 		if (result < 1) {
 			perror("ERROR reading from socket.");
-			exit(1);
+			msg.msg_type = invalidMSG;
+			printMessage(msg);
+			return msg;
+			//exit(1);
 		}
 
 		bytesRead += result;
@@ -162,22 +168,26 @@ Message receiveMessage(int socket) {
 			perror("Could not read from socket.");
 			exit(1);
 		}
-
 		bytesRead += result;
 	}
 
-	int i = 5;
-	while (i < bytesRead) {
-		msg.value[i] = buf[i];
+	int i = 0;
+	while (i + 5 < bytesRead) {
+		msg.value[i] = buf[5 + i];
 		i++;
+	}
+	while (i < BUFFER_SIZE) {
+		msg.value[i] = 0;
+		i += 1;
 	}
 	printMessage(msg);
 	return msg;
 }
 
 void printMessage(Message msg) {
-	printf("Protocol ID:%s, type:%c, length:%d, value:%s\n", msg.protocol_id,
-			msg.msg_type, msg.length, msg.value);
+	printf("Protocol ID:%d, type:%d, length:%d, value:%s\n",
+			msg.protocol_id[0] * 256 + msg.protocol_id[1], msg.msg_type,
+			msg.length, msg.value);
 }
 
 #endif /* MAIN_H_ */

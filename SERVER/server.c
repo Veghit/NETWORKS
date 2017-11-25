@@ -98,37 +98,53 @@ int getFile(char * username, char * filename, char * fileContent) {
 }
 int connectServer(int port) {
 	// connect TCP
+	int welcomeSocket;
+	char buffer[BUFFER_SIZE];
+	struct sockaddr_in serverAddr;
 
-	int sockfd = socket(PF_INET, SOCK_STREAM, 0);
-	if (sockfd < 0) {
+	welcomeSocket = socket(PF_INET, SOCK_STREAM, 0);
+
+	if (welcomeSocket < 0) {
 		perror("ERROR on accept");
 		exit(1);
 	}
+	if (setsockopt(welcomeSocket, SOL_SOCKET, SO_REUSEADDR, &(int){ 1 }, sizeof(int)) < 0)
+	    error("setsockopt(SO_REUSEADDR) failed");
 	//if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &(int){ 1 }, sizeof(int)) < 0) // fix to bind problem.
-	//    error("setsockopt(SO_REUSEADDR) failed");
-	struct sockaddr_in my_addr, cli_addr;
-	my_addr.sin_family = AF_INET;
-	my_addr.sin_port = htons(port);
-	my_addr.sin_addr.s_addr = INADDR_ANY;
-	if (bind(sockfd, (struct sockaddr *) &my_addr, sizeof(my_addr)) < 0) {
+	//   error("setsockopt(SO_REUSEADDR) failed");
+	serverAddr.sin_family = AF_INET;
+	serverAddr.sin_port = htons(port);
+	serverAddr.sin_addr.s_addr = INADDR_ANY;
+	memset(serverAddr.sin_zero, '\0', sizeof serverAddr.sin_zero);
+
+	if (bind(welcomeSocket, (struct sockaddr *) &serverAddr, sizeof(serverAddr))
+			< 0) {
 		perror("ERROR on binding");
 		exit(1);
 	}
-	return sockfd;
+	return welcomeSocket;
 }
 
-int waitForUser(int sockfd) {
-	printf("***Waiting for a user to connect***\n");
-	struct sockaddr_in my_addr, cli_addr;
-	int newsockfd, clilen;
-	listen(sockfd, 5);
-	clilen = sizeof(cli_addr);
-	newsockfd = accept(sockfd, (struct sockaddr *) &cli_addr, &clilen);
-	if (newsockfd < 0) {
+int waitForUser(int welcomeSocket) {
+	int newSocket;
+	struct sockaddr_storage serverStorage;
+	socklen_t addr_size;
+
+	if (listen(welcomeSocket, 5) == 0)
+		printf("Listening\n");
+	else {
+		perror("ERROR on listen");
+		exit(1);
+	}
+
+	addr_size = sizeof serverStorage;
+	newSocket = accept(welcomeSocket, (struct sockaddr *) &serverStorage,
+			&addr_size);
+	if (newSocket < 0) {
 		perror("ERROR on accept");
 		exit(1);
 	}
-	return newsockfd;
+	return newSocket;
 }
 Message createFailMessage() {
 	Message msg = createMessagefromString(failureMSG, "");
@@ -145,12 +161,14 @@ char * formatLoginAttempt(char str[]) {
 		login[i] = str[i];
 		i = i + 1;
 	}
-	login[i] = '\t';
+	login[i] = ' ';
 	i = i + 1;
 	while (str[i] && (i < MAX_PASSWORD_LENGTH + MAX_USERNAME_LENGTH + 1)) {
 		login[i] = str[i];
 		i = i + 1;
 	}
+	login[i]='\n';
+	login[i+1]=0;
 	return login;
 }
 int main(int argc, char *argv[]) {
@@ -241,6 +259,7 @@ int main(int argc, char *argv[]) {
 					printf("user socket closed,\n");
 			}
 			userSocket = waitForUser(serverSocket);
+			printf("a user was connected.\n");
 			outMsg = createHelloMessage();
 			loggedIn = 0;
 			userID = -1;

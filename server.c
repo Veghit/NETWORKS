@@ -49,7 +49,7 @@ Message createStatusMessage(char * username, char * dataPath) {
 	}
 	closedir(dirp);
 	char * str = calloc(1, MAX_FILENAME);
-	sprintf(str, "Hi %s, you have %d files stored.", username, filesCount);
+	sprintf(str, "Hi %s, you have %d files stored.\n", username, filesCount);
 
 	Message msg = createMessagefromString(statusMSG, str);
 	return msg;
@@ -205,12 +205,12 @@ int main(int argc, char *argv[]) {
 		strcat(folderName, dir_path);
 		strcat(folderName, "/");
 		strcat(folderName, getUserName(users, j));
-		mkdir(folderName, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-		//if (res < 0) {
-		//	printf("%s", folderName);
-		//	perror("MKDIR failed.");
-		//	exit(1);
-		//}
+		int res = mkdir(folderName, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+		if (res < 0) {
+			printf("%s", folderName);
+			perror("MKDIR failed.");
+			//exit(1);
+		}
 	}
 	int userSocket = -1;
 	Message inMsg;

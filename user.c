@@ -18,8 +18,8 @@ int main(int argc, char *argv[]) {
 		printf("should receive 2 or 0 cmd args. Received %d args", argc);
 	}
 
-	char* hostname= DEFAULT_HOSTNAME;
-	int port= DEFAULT_PORT;
+	char* hostname = DEFAULT_HOSTNAME;
+	int port = DEFAULT_PORT;
 	char username[MAX_USERNAME_LENGTH] = "";
 	char password[MAX_PASSWORD_LENGTH] = "";
 
@@ -70,8 +70,6 @@ int main(int argc, char *argv[]) {
 	}
 	//Get continuous input from user and call appropriate function
 	char input[MAX_INPUT_MSG_LENGTH];
-	scanf("%s", input);
-	parseInputMsg(input, clientSocket);
 	while (strcmp(input, "quit\n") != 0) { //Keep getting input until "quit" is received
 		scanf("%s", input);
 		parseInputMsg(input, clientSocket);
@@ -85,7 +83,7 @@ int initClient(char* ip, int port) { //initialize connection, returns -1 on erro
 	struct sockaddr_in serv_addr;
 	sockfd = socket(PF_INET, SOCK_STREAM, 0);
 	if (sockfd < 0) //Error creating socket
-	{
+			{
 		return -1;
 	}
 
@@ -110,20 +108,20 @@ void parseInputMsg(char* msg, int sockfd) { //Parse input msg and call appropria
 	token = strtok(msg, s); //Get first word from input
 
 	if (strcmp(token, "list_of_files") == 0) {
-		//list_of_files(sockfd);
+		list_of_files(sockfd);
 	} else if (strcmp(token, "delete_file") == 0) {
-		//	token = strtok(NULL, s);
-		//delete_file(sockfd, token);
+		token = strtok(msg, s);
+		delete_file(sockfd, token);
 	} else if (strcmp(token, "add_file") == 0) {
-		//char* path = token = strtok(NULL, s);
-		//	char* filename = token = strtok(NULL, s);
-		//add_file(sockfd, path, filename);
+		char* path = token = strtok(msg, s);
+		char* filename = token = strtok(msg, s);
+		add_file(sockfd, path, filename);
 	} else if (strcmp(token, "get_file") == 0) {
-		//char* filename = token = strtok(NULL, s);
-		//	char* path = token = strtok(NULL, s);
-		//get_file(sockfd, filename, path);
+		char* filename = token = strtok(msg, s);
+		char* path = token = strtok(msg, s);
+		get_file(sockfd, filename, path);
 	} else if (strcmp(token, "quit") == 0) {
-		//quit(sockfd);
+		quit(sockfd);
 	}
 
 	else {
@@ -132,14 +130,13 @@ void parseInputMsg(char* msg, int sockfd) { //Parse input msg and call appropria
 
 }
 
-
 void list_of_files(int clientSocket) {
 	int status;
-	Message msg = createMessagefromString(list_of_filesMSG, NULL); //TODO check if I should replace NULL with an empty string
+	Message msg = createMessagefromString(list_of_filesMSG, "");
 
 	//Send request to server
 	status = sendMessage(clientSocket, msg);
-	if (status == 0) {
+	if (status != 0) {
 		perror("Error sending list_of_files msg");
 	}
 
@@ -155,6 +152,11 @@ void add_file(int clientSocket, char* path_to_file, char* newFileName) {
 
 	//Open the file and read its content into buffer
 	fp = fopen(path_to_file, "r");
+	if (fp <= 0) {
+		printf("%s", path_to_file);
+		perror("can't find entered path.\n");
+		return;
+	}
 	char* buffer = malloc(sizeof(char) * BUFFER_SIZE);
 	fread(buffer, sizeof(char), BUFFER_SIZE, fp);
 	fclose(fp);
@@ -164,7 +166,7 @@ void add_file(int clientSocket, char* path_to_file, char* newFileName) {
 
 	//Send request to server
 	status = sendMessage(clientSocket, msg);
-	if (status == 0) {
+	if (status != 0) {
 		perror("Error sending transfer_fileMSG msg");
 	}
 
@@ -186,7 +188,7 @@ void delete_file(int clientSocket, char* filename) {
 	//Send delete filename msg to server
 	Message msg = createMessagefromString(delete_fileMSG, filename);
 	status = sendMessage(clientSocket, msg);
-	if (status == 0) {
+	if (status != 0) {
 		perror("Error sending delete_file msg");
 	}
 
@@ -207,7 +209,7 @@ void get_file(int clientSocket, char* file_name, char* path_to_save) {
 	//Send get file request to server
 	Message msg = createMessagefromString(get_fileMSG, file_name);
 	status = sendMessage(clientSocket, msg);
-	if (status == 0) {
+	if (status != 0) {
 		perror("Error sending get_fileMSG msg");
 	}
 
@@ -236,7 +238,7 @@ void quit(int clientSocket) {
 	//Send quit msg to server
 	Message msg = createMessagefromString(quitMSG, "");
 	status = sendMessage(clientSocket, msg);
-	if (status == 0) {
+	if (status != 0) {
 		perror("Error sending quitMSG msg");
 	}
 	if (close(clientSocket) == -1) {

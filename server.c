@@ -52,6 +52,8 @@ Message createStatusMessage(char * username, char * dataPath) {
 	sprintf(str, "Hi %s, you have %d files stored.\n", username, filesCount);
 
 	Message msg = createMessagefromString(statusMSG, str);
+	free(path);
+	free(str);
 	return msg;
 }
 Message createFileListMessage(char * username, char * dataPath) {
@@ -68,34 +70,40 @@ Message createFileListMessage(char * username, char * dataPath) {
 		}
 	}
 	closedir(dirp);
-	return createMessagefromString(list_of_files_resMSG, strList);
+	Message msg = createMessagefromString(list_of_files_resMSG, strList);
+	free(strList);
+	free(path);
+	return msg;
 }
 int deleteFile(char * username, char * filename, char * dataPath) {
 	char * fullPath = calloc(1, MAX_USERNAME_LENGTH + MAX_FILENAME);
 	sprintf(fullPath, "%s/%s/%s", dataPath, username, filename);
-	return remove(fullPath);
+	int ret = remove(fullPath);
+	free(fullPath);
+	return ret;
 }
-int addFile(char * username, char * fileNameAndContent,	char * dataPath) {
+int addFile(char * username, char * fileNameAndContent, char * dataPath) {
 	char * fullPath = calloc(1, MAX_USERNAME_LENGTH + MAX_FILENAME);
 	char fileName[MAX_FILENAME];
 	char fileContent[MAX_FILE_SIZE];
-	int i=0;
-	while(fileNameAndContent[i]!=0){
-		fileName[i]=fileNameAndContent[i];
-		i+=1;
+	int i = 0;
+	while (fileNameAndContent[i] != 0) {
+		fileName[i] = fileNameAndContent[i];
+		i += 1;
 	}
 	fileName[i] = 0;
-	int j=1;
-	while(fileNameAndContent[i+j]!=0){
-		fileContent[j-1]=fileNameAndContent[i+j];
-		j+=1;
+	int j = 1;
+	while (fileNameAndContent[i + j] != 0) {
+		fileContent[j - 1] = fileNameAndContent[i + j];
+		j += 1;
 	}
-	fileContent[j-1] = 0;
+	fileContent[j - 1] = 0;
 	sprintf(fullPath, "%s/%s/%s", dataPath, username, fileName);
-	printf("%s",fileContent);
+	printf("%s", fileContent);
 	FILE *file = fopen(fullPath, "w");
 	int res = fputs(fileContent, file);
 	fclose(file);
+	free(fullPath);
 	return (res == EOF);
 }
 int getFile(char * username, char * filename, char * fileContent,
@@ -113,6 +121,7 @@ int getFile(char * username, char * filename, char * fileContent,
 		i += 1;
 	}
 	fclose(file);
+	free(fullPath);
 	return 0;
 }
 int connectServer(int port) {
@@ -266,8 +275,7 @@ int main(int argc, char *argv[]) {
 				outMsg = createFailMessage();
 			break;
 		case transfer_fileMSG: // file_transfer (to server)
-			if (loggedIn
-					&& (0 == addFile(username, inMsg.value, dir_path)))
+			if (loggedIn && (0 == addFile(username, inMsg.value, dir_path)))
 
 				outMsg = createSuccessMessage();
 			else

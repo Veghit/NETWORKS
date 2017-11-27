@@ -230,7 +230,11 @@ void get_file(int clientSocket, char* file_name, char* path_to_save) {
 		FILE *fp;
 		char full_path[MAX_FILENAME];
 		sprintf(full_path, "%s/%s", path_to_save, file_name);
-		fp = fopen(path_to_save, "w");
+		fp = fopen(full_path, "w");
+		if (fp <= 0) {
+			printf("%s - bad path.\n", full_path);
+			return;
+		}
 		fwrite(buffer, sizeof(char), responseMsg.length - 1, fp);
 		fclose(fp);
 		free(buffer);

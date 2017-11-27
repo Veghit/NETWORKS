@@ -112,7 +112,10 @@ int getFile(char * username, char * filename, char * fileContent,
 	sprintf(fullPath, "%s/%s/%s", dataPath, username, filename);
 
 	FILE *file = fopen(fullPath, "r");
-
+	if (file <= 0) {
+		printf("%s - bad path.\n", fullPath);
+		return 1;
+	}
 	int i = 0;
 	char cur;
 	while ((cur = fgetc(file)) != EOF) {
@@ -231,8 +234,8 @@ int main(int argc, char *argv[]) {
 		strcat(folderName, getUserName(users, j));
 		int res = mkdir(folderName, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
 		if (res < 0) {
-			printf("%s", folderName);
-			perror("MKDIR failed.");
+			//printf("%s", folderName);
+			//perror("MKDIR failed.");
 			//exit(1);
 		}
 	}

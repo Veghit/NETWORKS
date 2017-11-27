@@ -75,16 +75,18 @@ int deleteFile(char * username, char * filename, char * dataPath) {
 	sprintf(fullPath, "%s/%s/%s", dataPath, username, filename);
 	return remove(fullPath);
 }
-int addFile(char * username, char * filename, char * fileContent, char * dataPath) {
+int addFile(char * username, char * filename, char * fileContent,
+		char * dataPath) {
 	char * fullPath = calloc(1, MAX_USERNAME_LENGTH + MAX_FILENAME);
 	sprintf(fullPath, "%s/%s/%s", dataPath, username, filename);
-
+	printf("%s",fileContent);
 	FILE *file = fopen(fullPath, "w");
 	int res = fputs(fileContent, file);
 	fclose(file);
 	return (res == EOF);
 }
-int getFile(char * username, char * filename, char * fileContent,char * dataPath) {
+int getFile(char * username, char * filename, char * fileContent,
+		char * dataPath) {
 	char * fullPath = calloc(1, MAX_USERNAME_LENGTH + MAX_FILENAME);
 	sprintf(fullPath, "%s/%s/%s", dataPath, username, filename);
 
@@ -233,31 +235,33 @@ int main(int argc, char *argv[]) {
 			if (userID != -1) {
 				username = getUserName(users, userID);
 				loggedIn = 1;
-				outMsg = createStatusMessage(username,dir_path);
+				outMsg = createStatusMessage(username, dir_path);
 			} else
 				outMsg = createFailMessage();
 			free(loginAttempt);
 			break;
 		case list_of_filesMSG: // list_of_files request
 			if (loggedIn) {
-				outMsg = createFileListMessage(username,dir_path);
+				outMsg = createFileListMessage(username, dir_path);
 			} else
 				outMsg = createFailMessage();
 			break;
 		case delete_fileMSG: // delete file from server request
-			if (loggedIn && (0 == deleteFile(username, inMsg.value,dir_path)))
+			if (loggedIn && (0 == deleteFile(username, inMsg.value, dir_path)))
 				outMsg = createSuccessMessage();
 			else
 				outMsg = createFailMessage();
 			break;
 		case transfer_fileMSG: // file_transfer (to server)
-			if (loggedIn && (0 == addFile(username, inMsg.value, buffer,dir_path)))
+			if (loggedIn
+					&& (0 == addFile(username, inMsg.value, buffer, dir_path)))
 				outMsg = createSuccessMessage();
 			else
 				outMsg = createFailMessage();
 			break;
 		case get_fileMSG: // file_request (from server)
-			if (loggedIn && (0 == getFile(username, inMsg.value, buffer,dir_path))) {
+			if (loggedIn
+					&& (0 == getFile(username, inMsg.value, buffer, dir_path))) {
 				outMsg = createMessagefromTwoStrings(transfer_fileMSG,
 						inMsg.value, buffer);
 			} else

@@ -70,10 +70,11 @@ int main(int argc, char *argv[]) {
 	}
 	//Get continuous input from user and call appropriate function
 	char input[MAX_INPUT_MSG_LENGTH];
-	fgets (input, MAX_INPUT_MSG_LENGTH, stdin);
+	fgets(input, MAX_INPUT_MSG_LENGTH, stdin);
 	while (strcmp(input, "quit") != 0) { //Keep getting input until "quit" is received
-		fgets (input, MAX_INPUT_MSG_LENGTH, stdin);
-		parseInputMsg(input, clientSocket);
+		fgets(input, MAX_INPUT_MSG_LENGTH, stdin);
+		if (strcmp(input,"\n")!=0)
+			parseInputMsg(input, clientSocket);
 	}
 
 	return 0;
@@ -105,7 +106,7 @@ int initClient(char* ip, int port) { //initialize connection, returns -1 on erro
 void parseInputMsg(char msg[], int sockfd) { //Parse input msg and call appropriate function
 
 	char *token;
-	msg[strlen(msg)-1]=0;
+	msg[strlen(msg) - 1] = 0;
 	token = strtok(msg, " "); //Get first word from input
 
 	if (strcmp(token, "list_of_files") == 0) {
@@ -117,7 +118,7 @@ void parseInputMsg(char msg[], int sockfd) { //Parse input msg and call appropri
 		char* path;
 		char* filename;
 		path = strtok(NULL, " ");
-		filename = strtok(NULL," ");
+		filename = strtok(NULL, " ");
 		add_file(sockfd, path, filename);
 	} else if (strcmp(token, "get_file") == 0) {
 		char* filename = strtok(NULL, " ");
@@ -166,7 +167,7 @@ void add_file(int clientSocket, char* path_to_file, char* newFileName) {
 	fclose(fp);
 
 	Message msg = createMessagefromTwoStrings(transfer_fileMSG, newFileName,
-			path_to_file);
+			buffer);
 
 	//Send request to server
 	status = sendMessage(clientSocket, msg);
@@ -201,7 +202,7 @@ void delete_file(int clientSocket, char* filename) {
 
 	//Check result of recieved msg from server
 	if (responseMsg.msg_type == successMSG) {
-		printf("File removed");
+		printf("File removed\n");
 	} else {
 		printf("No such file exists!");
 	}

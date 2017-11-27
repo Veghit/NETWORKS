@@ -63,8 +63,8 @@ Message createFileListMessage(char * username, char * dataPath) {
 	dirp = opendir(path);
 	while ((entry = readdir(dirp)) != NULL) {
 		if (entry->d_type == DT_REG) {
-			strcat(strList, "\n");
 			strcat(strList, entry->d_name);
+			strcat(strList, "\n");
 		}
 	}
 	closedir(dirp);

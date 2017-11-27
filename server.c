@@ -302,6 +302,7 @@ int main(int argc, char *argv[]) {
 			outMsg = createHelloMessage();
 			loggedIn = 0;
 			userID = -1;
+			free(username);
 			username = "";
 			break;
 		}

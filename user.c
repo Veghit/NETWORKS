@@ -228,8 +228,10 @@ void get_file(int clientSocket, char* file_name, char* path_to_save) {
 		char* buffer = malloc(sizeof(char) * BUFFER_SIZE);
 		strcpy(buffer, responseMsg.value); //Get file content into buffer
 		FILE *fp;
+		char full_path[MAX_FILENAME];
+		sprintf(full_path, "%s/%s", path_to_save, file_name);
 		fp = fopen(path_to_save, "w");
-		fwrite(buffer, sizeof(char), responseMsg.length-1, fp);
+		fwrite(buffer, sizeof(char), responseMsg.length - 1, fp);
 		fclose(fp);
 		free(buffer);
 		printf("File saved\n");

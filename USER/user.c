@@ -1,14 +1,91 @@
 #include "aux.h"
 
-#define DEFAULT_PORT		1337
+#define DEFAULT_PORT		12346
 #define DEFAULT_HOSTNAME	"localhost"
-#define MAX_INPUT_MSG_LENGTH	50 //TODO Change?
+#define MAX_INPUT_MSG_LENGTH	60 
+
+//Function declaration 
+void quit(int clientSocket);
+int initClient(char* ip, int port);
+void parseInputMsg(char* msg, int sockfd);
+void list_of_files(int clientSocket);
+void add_file(int clientSocket, char* path_to_file, char* newFileName);
+void delete_file(int clientSocket, char* filename);
+void get_file(int clientSocket, char* file_name, char* path_to_save);
+
+int main(int argc, char *argv[]) {
+	if ((argc != 3) && (argc != 1)) {
+		printf("should receive 2 or 0 cmd args. Received %d args", argc);
+	}
+
+	char* hostname= DEFAULT_HOSTNAME;
+	int port= DEFAULT_PORT;
+	char username[MAX_USERNAME_LENGTH] = "";
+	char password[MAX_PASSWORD_LENGTH] = "";
+
+	if (argc == 3) {
+		hostname = argv[1];
+		port = atoi(argv[2]);
+	}
+	int clientSocket = initClient(hostname, port);
+	if (clientSocket == -1) {
+		perror("Error starting connection \n");
+	}
+
+	//recieve hello msg from server
+	Message responseMsg = receiveMessage(clientSocket);
+	if (responseMsg.msg_type == helloMSG) {
+		printf("Welcome! Please log in. \n");
+	}
+	if (responseMsg.msg_type != helloMSG) {
+		printf("Error receiving hello msg \n");
+	}
+
+	int successLogin = 0;
+
+	//Keep getting username and password until authentication succeeds 
+	while (successLogin == 0) {
+		//Get login input from user and send login msg to server
+		printf("User: ");
+		scanf("%s", username);
+		printf("Password: ");
+		scanf("%s", password);
+		int status;
+		Message msg = createMessagefromTwoStrings(loginMSG, username, password);
+		//Send request to server
+		status = sendMessage(clientSocket, msg);
+		if (status != 0) {
+			perror("Error sending login msg");
+		}
+
+		//Recieve login result from server
+		responseMsg = receiveMessage(clientSocket);
+		if ((responseMsg.msg_type == statusMSG)) {
+			printf("%s", responseMsg.value);
+			successLogin = 1;
+		} else {
+			printf("Authentication failed\n");
+
+		}
+	}
+	//Get continuous input from user and call appropriate function
+	char input[MAX_INPUT_MSG_LENGTH];
+	scanf("%s", input);
+	parseInputMsg(input, clientSocket);
+	while (strcmp(input, "quit\n") != 0) { //Keep getting input until "quit" is received
+		scanf("%s", input);
+		parseInputMsg(input, clientSocket);
+	}
+
+	quit(clientSocket);
+}
+
 int initClient(char* ip, int port) { //initialize connection, returns -1 on errors, otherwise socket
 	int sockfd;
 	struct sockaddr_in serv_addr;
 	sockfd = socket(PF_INET, SOCK_STREAM, 0);
 	if (sockfd < 0) //Error creating socket
-			{
+	{
 		return -1;
 	}
 
@@ -56,68 +133,6 @@ void parseInputMsg(char* msg, int sockfd) { //Parse input msg and call appropria
 
 }
 
-int main(int argc, char *argv[]) {
-	if ((argc != 3) && (argc != 1)) {
-		printf("should receive 2 or 0 cmd args. Received %d args", argc);
-	}
-
-	char* hostname = DEFAULT_HOSTNAME;
-	int port = DEFAULT_PORT;
-	char username[MAX_USERNAME_LENGTH] = "";
-	char password[MAX_PASSWORD_LENGTH] = "";
-
-	if (argc == 3) {
-		hostname = argv[1];
-		port = atoi(argv[2]);
-	}
-	int clientSocket = initClient(hostname, port);
-	if (clientSocket == -1) {
-		perror("Error starting connection \n");
-	}
-
-	//recieve hello msg from server
-	Message responseMsg = receiveMessage(clientSocket);
-	if (responseMsg.msg_type == helloMSG) {
-		printf("Welcome! Please log in. \n ");
-	}
-	if (responseMsg.msg_type != helloMSG) {
-		printf("Error receiving hello msg \n ");
-	}
-
-	//Get login input from user and send login msg to server
-	printf("User: \n");
-	scanf("%s", username);
-	printf("Password: \n");
-	scanf("%s", password);
-	int status;
-	Message msg = createMessagefromTwoStrings(loginMSG, username, password);
-	//Send request to server
-	status = sendMessage(clientSocket, msg);
-	if (status != 0) {
-		perror("Error sending login msg");
-	}
-
-	//Recieve login result from server
-	responseMsg = receiveMessage(clientSocket);
-	if ((responseMsg.msg_type == successMSG)
-			|| (responseMsg.msg_type == statusMSG)) {
-		//responseMsg = receiveMessage(clientSocket); //receive status msg
-		printf("%s", responseMsg.value);
-	}
-	else
-		printf("Authentication failed\n ");
-
-	//Get continuous input from user and call appropriate function
-	char input[MAX_INPUT_MSG_LENGTH];
-	fgets(input, MAX_INPUT_MSG_LENGTH, stdin);
-	while (strcmp(input, "quit\n") != 0) { //Keep getting input until "quit" is received
-		parseInputMsg(input, clientSocket);
-		fgets(input, MAX_INPUT_MSG_LENGTH, stdin);
-	}
-
-	quit(clientSocket);
-}
-
 void list_of_files(int clientSocket) {
 	int status;
 	Message msg = createMessagefromString(list_of_filesMSG, NULL); //TODO check if I should replace NULL with an empty string
@@ -130,7 +145,7 @@ void list_of_files(int clientSocket) {
 
 	//Recieve response
 	Message responseMsg = receiveMessage(clientSocket);
-	printf(responseMsg.value);
+	printf("%s", responseMsg.value);
 
 }
 
@@ -155,7 +170,7 @@ void add_file(int clientSocket, char* path_to_file, char* newFileName) {
 
 	//Recieve response
 	Message responseMsg = receiveMessage(clientSocket);
-	printf(responseMsg.value);
+	printf("%s", responseMsg.value);
 
 	//Check result of recieved msg from server
 	if (responseMsg.msg_type == successMSG) {
@@ -163,22 +178,22 @@ void add_file(int clientSocket, char* path_to_file, char* newFileName) {
 	} else {
 		printf("Error adding file");
 	}
-
+	free(buffer);
 }
 
 void delete_file(int clientSocket, char* filename) {
 	int status;
-//Send delete filename msg to server
+	//Send delete filename msg to server
 	Message msg = createMessagefromString(delete_fileMSG, filename);
 	status = sendMessage(clientSocket, msg);
 	if (status == 0) {
 		perror("Error sending delete_file msg");
 	}
 
-//Recieve response
+	//Recieve response
 	Message responseMsg = receiveMessage(clientSocket);
 
-//Check result of recieved msg from server
+	//Check result of recieved msg from server
 	if (responseMsg.msg_type == successMSG) {
 		printf("File removed");
 	} else {
@@ -189,17 +204,17 @@ void delete_file(int clientSocket, char* filename) {
 void get_file(int clientSocket, char* file_name, char* path_to_save) {
 
 	int status;
-//Send get file request to server
+	//Send get file request to server
 	Message msg = createMessagefromString(get_fileMSG, file_name);
 	status = sendMessage(clientSocket, msg);
 	if (status == 0) {
 		perror("Error sending get_fileMSG msg");
 	}
 
-//Recieve response from server
+	//Recieve response from server
 	Message responseMsg = receiveMessage(clientSocket);
 
-//Check result of recieved msg from server
+	//Check result of recieved msg from server
 	if (responseMsg.msg_type == failureMSG) {
 		printf("Error getting file");
 	} else {
@@ -210,7 +225,7 @@ void get_file(int clientSocket, char* file_name, char* path_to_save) {
 		fp = fopen(path_to_save, "w");
 		fwrite(buffer, sizeof(char), BUFFER_SIZE, fp);
 		fclose(fp);
-
+		free(buffer);
 		printf("File saved");
 	}
 
@@ -218,16 +233,15 @@ void get_file(int clientSocket, char* file_name, char* path_to_save) {
 
 void quit(int clientSocket) {
 	int status;
-//Send quit msg to server
+	//Send quit msg to server
 	Message msg = createMessagefromString(quitMSG, "");
 	status = sendMessage(clientSocket, msg);
 	if (status == 0) {
 		perror("Error sending quitMSG msg");
 	}
-	if (close(socket) == -1) {
+	if (close(clientSocket) == -1) {
 		printf("close failed \n");
 	} else {
 		printf("close succeeded \n");
 	}
 }
-

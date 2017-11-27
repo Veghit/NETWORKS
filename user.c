@@ -229,7 +229,7 @@ void get_file(int clientSocket, char* file_name, char* path_to_save) {
 		strcpy(buffer, responseMsg.value); //Get file content into buffer
 		FILE *fp;
 		fp = fopen(path_to_save, "w");
-		fwrite(buffer, sizeof(char), responseMsg.length, fp);
+		fwrite(buffer, sizeof(char), responseMsg.length-1, fp);
 		fclose(fp);
 		free(buffer);
 		printf("File saved\n");
@@ -248,6 +248,6 @@ void quit(int clientSocket) {
 	if (close(clientSocket) == -1) {
 		printf("close failed.\n");
 	} else {
-		printf("close succeeded.\n");
+		//printf("close succeeded.\n");
 	}
 }

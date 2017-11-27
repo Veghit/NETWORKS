@@ -110,15 +110,15 @@ void parseInputMsg(char* msg, int sockfd) { //Parse input msg and call appropria
 	if (strcmp(token, "list_of_files") == 0) {
 		list_of_files(sockfd);
 	} else if (strcmp(token, "delete_file") == 0) {
-		token = strtok(msg, s);
+		token = strtok(NULL, s);
 		delete_file(sockfd, token);
 	} else if (strcmp(token, "add_file") == 0) {
-		char* path = token = strtok(msg, s);
-		char* filename = token = strtok(msg, s);
+		char* path = strtok(NULL, s);
+		char* filename = strtok(NULL, s);
 		add_file(sockfd, path, filename);
 	} else if (strcmp(token, "get_file") == 0) {
-		char* filename = token = strtok(msg, s);
-		char* path = token = strtok(msg, s);
+		char* filename = strtok(NULL, s);
+		char* path = strtok(NULL, s);
 		get_file(sockfd, filename, path);
 	} else if (strcmp(token, "quit") == 0) {
 		quit(sockfd);

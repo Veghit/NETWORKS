@@ -70,12 +70,14 @@ int main(int argc, char *argv[]) {
 	}
 	//Get continuous input from user and call appropriate function
 	char input[MAX_INPUT_MSG_LENGTH];
+	fgets (input, MAX_INPUT_MSG_LENGTH, stdin);
 	while (strcmp(input, "quit\n") != 0) { //Keep getting input until "quit" is received
-		scanf("%s", input);
+		fgets (input, MAX_INPUT_MSG_LENGTH, stdin);
 		parseInputMsg(input, clientSocket);
 	}
 
 	quit(clientSocket);
+	return 0;
 }
 
 int initClient(char* ip, int port) { //initialize connection, returns -1 on errors, otherwise socket
@@ -101,24 +103,25 @@ int initClient(char* ip, int port) { //initialize connection, returns -1 on erro
 	return sockfd;
 }
 
-void parseInputMsg(char* msg, int sockfd) { //Parse input msg and call appropriate function
+void parseInputMsg(char msg[], int sockfd) { //Parse input msg and call appropriate function
 
-	const char s[2] = " ";
 	char *token;
-	token = strtok(msg, s); //Get first word from input
+	token = strtok(msg, " "); //Get first word from input
 
 	if (strcmp(token, "list_of_files") == 0) {
 		list_of_files(sockfd);
 	} else if (strcmp(token, "delete_file") == 0) {
-		token = strtok(NULL, s);
+		token = strtok(NULL, " ");
 		delete_file(sockfd, token);
 	} else if (strcmp(token, "add_file") == 0) {
-		char* path = strtok(NULL, s);
-		char* filename = strtok(NULL, s);
+		char* path;
+		char* filename;
+		path = strtok(NULL, " ");
+		filename = strtok(NULL," ");
 		add_file(sockfd, path, filename);
 	} else if (strcmp(token, "get_file") == 0) {
-		char* filename = strtok(NULL, s);
-		char* path = strtok(NULL, s);
+		char* filename = strtok(NULL, " ");
+		char* path = strtok(NULL, " ");
 		get_file(sockfd, filename, path);
 	} else if (strcmp(token, "quit") == 0) {
 		quit(sockfd);
@@ -147,6 +150,7 @@ void list_of_files(int clientSocket) {
 }
 
 void add_file(int clientSocket, char* path_to_file, char* newFileName) {
+	//printf("%s *** %s",path_to_file,newFileName);
 	int status;
 	FILE *fp;
 

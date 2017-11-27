@@ -99,7 +99,6 @@ int getFile(char * username, char * filename, char * fileContent) {
 int connectServer(int port) {
 	// connect TCP
 	int welcomeSocket;
-	char buffer[BUFFER_SIZE];
 	struct sockaddr_in serverAddr;
 
 	welcomeSocket = socket(PF_INET, SOCK_STREAM, 0);
@@ -109,7 +108,11 @@ int connectServer(int port) {
 		exit(1);
 	}
 	if (setsockopt(welcomeSocket, SOL_SOCKET, SO_REUSEADDR, &(int){ 1 }, sizeof(int)) < 0)
-	    error("setsockopt(SO_REUSEADDR) failed");
+	{
+		perror("ERROR on accept");
+		exit(1);
+	}
+
 	//if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &(int){ 1 }, sizeof(int)) < 0) // fix to bind problem.
 	//   error("setsockopt(SO_REUSEADDR) failed");
 	serverAddr.sin_family = AF_INET;
@@ -180,7 +183,8 @@ int main(int argc, char *argv[]) {
 	char * users_file = argv[1];
 	//char * dir_path = argv[2];
 	char * users[MAX_USERS];
-	for (int i = 0; i < MAX_USERS; i++) {
+	int i;
+	for (i = 0; i < MAX_USERS; i++) {
 		users[i] = calloc(sizeof(char),
 		MAX_PASSWORD_LENGTH + MAX_USERNAME_LENGTH + 1);
 	}
@@ -205,7 +209,7 @@ int main(int argc, char *argv[]) {
 	char userID = -1, loggedIn;
 	char * loginAttempt;
 	char * username;
-	char * buffer[MAX_FILE_SIZE];
+	char buffer[MAX_FILE_SIZE];
 	int serverSocket = connectServer(port);
 
 	while (1) { //server never stops

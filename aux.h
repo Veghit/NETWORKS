@@ -142,7 +142,7 @@ Message receiveMessage(int socket) {
 	while (bytesRead < minLen) {
 		result = read(socket, buf + bytesRead, minLen - bytesRead);
 		if (result < 1) {
-			perror("ERROR reading from socket.");
+			printf("ERROR reading from socket.");
 			msg.msg_type = invalidMSG;
 			printMessage(msg);
 			return msg;

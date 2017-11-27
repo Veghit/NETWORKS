@@ -16,7 +16,6 @@ int initClient(char* ip, int port) { //initialize connection, returns -1 on erro
 	serv_addr.sin_port = htons(port); // change?
 	serv_addr.sin_addr.s_addr = inet_addr("127.0.0.1"); //change?
 	bzero(&(serv_addr.sin_zero), 8);
-	//printf("Port is %d",port);
 
 	size_t addr_size = sizeof(serv_addr);
 	if (connect(sockfd, (struct sockaddr *) &serv_addr, addr_size) < 0) { //Error connecting
@@ -51,7 +50,7 @@ void parseInputMsg(char* msg, int sockfd) { //Parse input msg and call appropria
 	}
 
 	else {
-		printf("Error: unexpected message\n");
+		printf("\nError: unexpected message");
 	}
 
 }
@@ -78,16 +77,16 @@ int main(int argc, char *argv[]) {
 	//recieve hello msg from server
 	Message responseMsg = receiveMessage(clientSocket);
 	if (responseMsg.msg_type == helloMSG) {
-		printf("Welcome! Please log in. \n ");
+		printf("Welcome! Please log in. \n");
 	}
 	if (responseMsg.msg_type != helloMSG) {
 		printf("Error receiving hello msg \n ");
 	}
 
 	//Get login input from user and send login msg to server
-	printf("User: \n");
+	printf("User: ");
 	scanf("%s", username);
-	printf("Password: \n");
+	printf("Password: ");
 	scanf("%s", password);
 	int status;
 	Message msg = createMessagefromTwoStrings(loginMSG, username, password);
@@ -99,8 +98,7 @@ int main(int argc, char *argv[]) {
 
 	//Recieve login result from server
 	responseMsg = receiveMessage(clientSocket);
-	if ((responseMsg.msg_type == successMSG)
-			|| (responseMsg.msg_type == statusMSG)) {
+	if (responseMsg.msg_type == statusMSG) {
 		//responseMsg = receiveMessage(clientSocket); //receive status msg
 		printf("%s", responseMsg.value);
 	}

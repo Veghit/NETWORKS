@@ -46,10 +46,30 @@ int main(int argc, char *argv[]) {
 	//Keep getting username and password until authentication succeeds 
 	while (successLogin == 0) {
 		//Get login input from user and send login msg to server
-		printf("User: ");
-		scanf("%s", username);
-		printf("Password: ");
-		scanf("%s", password);
+
+		//printf("User: ");
+		//scanf("%s", username);
+		//printf("Password: ");
+		//scanf("%s", password);
+		char * token;
+		fgets(username, MAX_INPUT_MSG_LENGTH, stdin);
+		token = strtok(username, " ");
+		if (strcmp(token, "User:") == 0) {
+			token = strtok(NULL, " ");
+			strcpy(username, token);
+			fgets(password, MAX_INPUT_MSG_LENGTH, stdin);
+			token = strtok(password, " ");
+			if (strcmp(token, "Password:") == 0) {
+				token = strtok(NULL, " ");
+				strcpy(password, token);
+				if ((strlen(username) > 0) && strlen(username) > 0) {
+					username[strlen(username) - 1] = 0;
+					password[strlen(password) - 1] = 0;
+				}
+			}
+		}
+		//printf("(%s,%s)", username, password);
+
 		int status;
 		Message msg = createMessagefromTwoStrings(loginMSG, username, password);
 		//Send request to server
@@ -70,7 +90,7 @@ int main(int argc, char *argv[]) {
 	}
 	//Get continuous input from user and call appropriate function
 	char input[MAX_INPUT_MSG_LENGTH];
-	fgets(input, MAX_INPUT_MSG_LENGTH, stdin);
+	//fgets(input, MAX_INPUT_MSG_LENGTH, stdin);
 	while (strcmp(input, "quit") != 0) { //Keep getting input until "quit" is received
 		fgets(input, MAX_INPUT_MSG_LENGTH, stdin);
 		if (strcmp(input, "\n") != 0)

@@ -231,8 +231,11 @@ int main(int argc, char *argv[]) {
 		char * folderName = calloc(sizeof(char), 256);
 		strcat(folderName, dir_path);
 		strcat(folderName, "/");
-		strcat(folderName, getUserName(users, j));
+		char * temp = getUserName(users, j);
+		strcat(folderName, temp);
+		free(temp);
 		int res = mkdir(folderName, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+		free(folderName);
 		if (res < 0) {
 			//printf("%s", folderName);
 			//perror("MKDIR failed.");
@@ -247,6 +250,7 @@ int main(int argc, char *argv[]) {
 	char * loginAttempt;
 	char * username;
 	char buffer[MAX_FILE_SIZE];
+	bzero(buffer, MAX_FILE_SIZE);
 	int serverSocket = connectServer(port);
 
 	while (1) { //server never stops
@@ -258,6 +262,7 @@ int main(int argc, char *argv[]) {
 					userID = j;
 			}
 			if (userID != -1) {
+				free(username);
 				username = getUserName(users, userID);
 				loggedIn = 1;
 				outMsg = createStatusMessage(username, dir_path);
@@ -305,8 +310,6 @@ int main(int argc, char *argv[]) {
 			outMsg = createHelloMessage();
 			loggedIn = 0;
 			userID = -1;
-			free(username);
-			username = "";
 			break;
 		}
 		sendMessage(userSocket, outMsg); // reply to the user

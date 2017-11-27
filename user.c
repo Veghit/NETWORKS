@@ -1,6 +1,6 @@
 #include "aux.h"
 
-#define DEFAULT_PORT		12346
+#define DEFAULT_PORT		1337
 #define DEFAULT_HOSTNAME	"localhost"
 #define MAX_INPUT_MSG_LENGTH	60 
 
@@ -35,7 +35,7 @@ int main(int argc, char *argv[]) {
 	//recieve hello msg from server
 	Message responseMsg = receiveMessage(clientSocket);
 	if (responseMsg.msg_type == helloMSG) {
-		printf("Welcome! Please log in. \n");
+		printf("Welcome! Please log in.\n");
 	}
 	if (responseMsg.msg_type != helloMSG) {
 		printf("Error receiving hello msg \n");
@@ -73,7 +73,7 @@ int main(int argc, char *argv[]) {
 	fgets(input, MAX_INPUT_MSG_LENGTH, stdin);
 	while (strcmp(input, "quit") != 0) { //Keep getting input until "quit" is received
 		fgets(input, MAX_INPUT_MSG_LENGTH, stdin);
-		if (strcmp(input,"\n")!=0)
+		if (strcmp(input, "\n") != 0)
 			parseInputMsg(input, clientSocket);
 	}
 
@@ -129,7 +129,7 @@ void parseInputMsg(char msg[], int sockfd) { //Parse input msg and call appropri
 	}
 
 	else {
-		printf("\nError: unexpected message");
+		printf("Error: unexpected message\n");
 	}
 
 }
@@ -151,7 +151,6 @@ void list_of_files(int clientSocket) {
 }
 
 void add_file(int clientSocket, char* path_to_file, char* newFileName) {
-	//printf("%s *** %s",path_to_file,newFileName);
 	int status;
 	FILE *fp;
 
@@ -181,9 +180,9 @@ void add_file(int clientSocket, char* path_to_file, char* newFileName) {
 
 	//Check result of recieved msg from server
 	if (responseMsg.msg_type == successMSG) {
-		printf("File added");
+		printf("File added\n");
 	} else {
-		printf("Error adding file");
+		printf("Error adding file.\n");
 	}
 	free(buffer);
 }
@@ -204,7 +203,7 @@ void delete_file(int clientSocket, char* filename) {
 	if (responseMsg.msg_type == successMSG) {
 		printf("File removed\n");
 	} else {
-		printf("No such file exists!");
+		printf("No such file exists!\n");
 	}
 }
 
@@ -223,17 +222,17 @@ void get_file(int clientSocket, char* file_name, char* path_to_save) {
 
 	//Check result of recieved msg from server
 	if (responseMsg.msg_type == failureMSG) {
-		printf("Error getting file");
+		printf("Error getting file.\n");
 	} else {
 		//Get file content from server and save it
 		char* buffer = malloc(sizeof(char) * BUFFER_SIZE);
-		strcpy(buffer,responseMsg.value); //Get file content into buffer
+		strcpy(buffer, responseMsg.value); //Get file content into buffer
 		FILE *fp;
 		fp = fopen(path_to_save, "w");
 		fwrite(buffer, sizeof(char), BUFFER_SIZE, fp);
 		fclose(fp);
 		free(buffer);
-		printf("File saved");
+		printf("File saved\n");
 	}
 
 }
@@ -247,8 +246,8 @@ void quit(int clientSocket) {
 		perror("Error sending quitMSG msg");
 	}
 	if (close(clientSocket) == -1) {
-		printf("close failed \n");
+		printf("close failed.\n");
 	} else {
-		printf("close succeeded \n");
+		printf("close succeeded.\n");
 	}
 }

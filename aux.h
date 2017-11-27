@@ -57,8 +57,8 @@ typedef struct msg_t {
 void printMessage(Message msg);
 
 int sendMessage(int userSocket, Message msg) {
-	printf("trying to send:");
-	printMessage(msg);
+	//printf("trying to send:");
+	//printMessage(msg);
 	char buf[BUFFER_SIZE];
 	buf[0] = msg.protocol_id[0];
 	buf[1] = msg.protocol_id[1];
@@ -81,8 +81,8 @@ int sendMessage(int userSocket, Message msg) {
 		}
 		bytesWritten += result;
 	}
-	printf("sent:");
-	printMessage(msg);
+	//printf("sent:");
+	//printMessage(msg);
 
 	return 0;
 }
@@ -144,7 +144,7 @@ Message receiveMessage(int socket) {
 		if (result < 1) {
 			printf("ERROR reading from socket.");
 			msg.msg_type = invalidMSG;
-			printMessage(msg);
+			//printMessage(msg);
 			return msg;
 			//exit(1);
 		}
@@ -158,7 +158,7 @@ Message receiveMessage(int socket) {
 	if (msg.length > BUFFER_SIZE) {
 		//perror("invalid message received.");
 		msg.msg_type = invalidMSG;
-		printMessage(msg);
+		//printMessage(msg);
 		return msg;
 	}
 
@@ -180,8 +180,8 @@ Message receiveMessage(int socket) {
 		msg.value[i] = 0;
 		i += 1;
 	}
-	printf("received:");
-	printMessage(msg);
+	//printf("received:");
+	//printMessage(msg);
 	return msg;
 }
 

@@ -227,7 +227,7 @@ void get_file(int clientSocket, char* file_name, char* path_to_save) {
 	} else {
 		//Get file content from server and save it
 		char* buffer = malloc(sizeof(char) * BUFFER_SIZE);
-		buffer = responseMsg.value; //Get file content into buffer
+		strcpy(buffer,responseMsg.value); //Get file content into buffer
 		FILE *fp;
 		fp = fopen(path_to_save, "w");
 		fwrite(buffer, sizeof(char), BUFFER_SIZE, fp);

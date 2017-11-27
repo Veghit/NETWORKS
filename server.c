@@ -75,10 +75,23 @@ int deleteFile(char * username, char * filename, char * dataPath) {
 	sprintf(fullPath, "%s/%s/%s", dataPath, username, filename);
 	return remove(fullPath);
 }
-int addFile(char * username, char * filename, char * fileContent,
-		char * dataPath) {
+int addFile(char * username, char * fileNameAndContent,	char * dataPath) {
 	char * fullPath = calloc(1, MAX_USERNAME_LENGTH + MAX_FILENAME);
-	sprintf(fullPath, "%s/%s/%s", dataPath, username, filename);
+	char fileName[MAX_FILENAME];
+	char fileContent[MAX_FILE_SIZE];
+	int i=0;
+	while(fileNameAndContent[i]!=0){
+		fileName[i]=fileNameAndContent[i];
+		i+=1;
+	}
+	fileName[i] = 0;
+	int j=1;
+	while(fileNameAndContent[i+j]!=0){
+		fileContent[j-1]=fileNameAndContent[i+j];
+		j+=1;
+	}
+	fileContent[j-1] = 0;
+	sprintf(fullPath, "%s/%s/%s", dataPath, username, fileName);
 	printf("%s",fileContent);
 	FILE *file = fopen(fullPath, "w");
 	int res = fputs(fileContent, file);
@@ -254,7 +267,8 @@ int main(int argc, char *argv[]) {
 			break;
 		case transfer_fileMSG: // file_transfer (to server)
 			if (loggedIn
-					&& (0 == addFile(username, inMsg.value, buffer, dir_path)))
+					&& (0 == addFile(username, inMsg.value, dir_path)))
+
 				outMsg = createSuccessMessage();
 			else
 				outMsg = createFailMessage();
@@ -262,8 +276,7 @@ int main(int argc, char *argv[]) {
 		case get_fileMSG: // file_request (from server)
 			if (loggedIn
 					&& (0 == getFile(username, inMsg.value, buffer, dir_path))) {
-				outMsg = createMessagefromTwoStrings(transfer_fileMSG,
-						inMsg.value, buffer);
+				outMsg = createMessagefromString(transfer_fileMSG, buffer);
 			} else
 				outMsg = createFailMessage();
 			break;

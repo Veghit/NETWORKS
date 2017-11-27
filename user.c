@@ -97,7 +97,7 @@ int initClient(char* ip, int port) { //initialize connection, returns -1 on erro
 	size_t addr_size = sizeof(serv_addr);
 	if (connect(sockfd, (struct sockaddr *) &serv_addr, addr_size) < 0) { //Error connecting
 		perror("Error starting connection \n");
-		error(1);
+		exit(1);
 	}
 
 	return sockfd;
@@ -132,70 +132,7 @@ void parseInputMsg(char* msg, int sockfd) { //Parse input msg and call appropria
 
 }
 
-<<<<<<< HEAD:user.c
-int main(int argc, char *argv[]) {
-	if ((argc != 3) && (argc != 1)) {
-		printf("should receive 2 or 0 cmd args. Received %d args", argc);
-	}
 
-	char* hostname = DEFAULT_HOSTNAME;
-	int port = DEFAULT_PORT;
-	char username[MAX_USERNAME_LENGTH] = "";
-	char password[MAX_PASSWORD_LENGTH] = "";
-
-	if (argc == 3) {
-		hostname = argv[1];
-		port = atoi(argv[2]);
-	}
-	int clientSocket = initClient(hostname, port);
-	if (clientSocket == -1) {
-		perror("Error starting connection \n");
-	}
-
-	//recieve hello msg from server
-	Message responseMsg = receiveMessage(clientSocket);
-	if (responseMsg.msg_type == helloMSG) {
-		printf("Welcome! Please log in. \n");
-	}
-	if (responseMsg.msg_type != helloMSG) {
-		printf("Error receiving hello msg \n ");
-	}
-
-	//Get login input from user and send login msg to server
-	printf("User: ");
-	scanf("%s", username);
-	printf("Password: ");
-	scanf("%s", password);
-	int status;
-	Message msg = createMessagefromTwoStrings(loginMSG, username, password);
-	//Send request to server
-	status = sendMessage(clientSocket, msg);
-	if (status != 0) {
-		perror("Error sending login msg");
-	}
-
-	//Recieve login result from server
-	responseMsg = receiveMessage(clientSocket);
-	if (responseMsg.msg_type == statusMSG) {
-		//responseMsg = receiveMessage(clientSocket); //receive status msg
-		printf("%s", responseMsg.value);
-	}
-	else
-		printf("Authentication failed\n ");
-
-	//Get continuous input from user and call appropriate function
-	char input[MAX_INPUT_MSG_LENGTH];
-	fgets(input, MAX_INPUT_MSG_LENGTH, stdin);
-	while (strcmp(input, "quit\n") != 0) { //Keep getting input until "quit" is received
-		parseInputMsg(input, clientSocket);
-		fgets(input, MAX_INPUT_MSG_LENGTH, stdin);
-	}
-
-	quit(clientSocket);
-}
-
-=======
->>>>>>> master:USER/user.c
 void list_of_files(int clientSocket) {
 	int status;
 	Message msg = createMessagefromString(list_of_filesMSG, NULL); //TODO check if I should replace NULL with an empty string

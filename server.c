@@ -200,7 +200,11 @@ int main(int argc, char *argv[]) {
 		char * folderName = calloc(sizeof(char), 256);
 		strcat(folderName, "SERVER/DATA/");
 		strcat(folderName, getUserName(users, j));
-		mkdir(folderName, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+		int res = mkdir(folderName, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+		if (res!=0){
+			perror("MKDIR failed.");
+			exit(1);
+		}
 	}
 	int userSocket = -1;
 	Message inMsg;

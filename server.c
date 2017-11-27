@@ -4,6 +4,10 @@ int parseUsersFile(char * users_file, char * users[]) {
 	int n = 0;
 	char const* const fileName = users_file;
 	FILE *file = fopen(fileName, "r");
+	if (file < 0) {
+		perror("ERROR on opening users file.");
+		exit(1);
+	}
 	char line[MAX_USERNAME_LENGTH + MAX_PASSWORD_LENGTH + 1];
 	while (fgets(line, sizeof(line), file)) {
 		//printf("%s", line);
@@ -22,7 +26,7 @@ char * getUserName(char * users[], int j) {
 		username[i] = users[j][i];
 		i += 1;
 	}
-	username[i + 1] = 0;
+	username[i] = 0;
 	return username;
 }
 Message createHelloMessage() {
@@ -30,11 +34,11 @@ Message createHelloMessage() {
 	Message msg = createMessagefromString(helloMSG, str);
 	return msg;
 }
-Message createStatusMessage(char * username) {
+Message createStatusMessage(char * username, char * dataPath) {
 	int filesCount = 0;
 	DIR * dirp;
 	char * path = calloc(1, MAX_FILENAME);
-	sprintf(path, "SERVER/DATA/%s/", username);
+	sprintf(path, "%s/%s/", dataPath, username);
 	//printf("trying to open %s",path);
 	struct dirent * entry;
 	dirp = opendir(path);
@@ -50,11 +54,11 @@ Message createStatusMessage(char * username) {
 	Message msg = createMessagefromString(statusMSG, str);
 	return msg;
 }
-Message createFileListMessage(char * username) {
+Message createFileListMessage(char * username, char * dataPath) {
 	char * strList = calloc(1, MAX_FILES_PER_USER * (2 + MAX_FILENAME));
 	DIR * dirp;
 	char * path = calloc(1, MAX_FILENAME);
-	sprintf(path, "SERVER/DATA/%s/", username);
+	sprintf(path, "%s/%s/", dataPath, username);
 	struct dirent * entry;
 	dirp = opendir(path);
 	while ((entry = readdir(dirp)) != NULL) {
@@ -66,23 +70,23 @@ Message createFileListMessage(char * username) {
 	closedir(dirp);
 	return createMessagefromString(list_of_files_resMSG, strList);
 }
-int deleteFile(char * username, char * filename) {
+int deleteFile(char * username, char * filename, char * dataPath) {
 	char * fullPath = calloc(1, MAX_USERNAME_LENGTH + MAX_FILENAME);
-	sprintf(fullPath, "SERVER/DATA/%s/%s", username, filename);
+	sprintf(fullPath, "%s/%s/%s", dataPath, username, filename);
 	return remove(fullPath);
 }
-int addFile(char * username, char * filename, char * fileContent) {
+int addFile(char * username, char * filename, char * fileContent, char * dataPath) {
 	char * fullPath = calloc(1, MAX_USERNAME_LENGTH + MAX_FILENAME);
-	sprintf(fullPath, "SERVER/DATA/%s/%s", username, filename);
+	sprintf(fullPath, "%s/%s/%s", dataPath, username, filename);
 
 	FILE *file = fopen(fullPath, "w");
 	int res = fputs(fileContent, file);
 	fclose(file);
 	return (res == EOF);
 }
-int getFile(char * username, char * filename, char * fileContent) {
+int getFile(char * username, char * filename, char * fileContent,char * dataPath) {
 	char * fullPath = calloc(1, MAX_USERNAME_LENGTH + MAX_FILENAME);
-	sprintf(fullPath, "SERVER/DATA/%s/%s", username, filename);
+	sprintf(fullPath, "%s/%s/%s", dataPath, username, filename);
 
 	FILE *file = fopen(fullPath, "r");
 
@@ -107,8 +111,8 @@ int connectServer(int port) {
 		perror("ERROR on accept");
 		exit(1);
 	}
-	if (setsockopt(welcomeSocket, SOL_SOCKET, SO_REUSEADDR, &(int){ 1 }, sizeof(int)) < 0)
-	{
+	if (setsockopt(welcomeSocket, SOL_SOCKET, SO_REUSEADDR, &(int ) { 1 },
+			sizeof(int)) < 0) {
 		perror("ERROR on accept");
 		exit(1);
 	}
@@ -170,8 +174,8 @@ char * formatLoginAttempt(char str[]) {
 		login[i] = str[i];
 		i = i + 1;
 	}
-	login[i]='\n';
-	login[i+1]=0;
+	login[i] = '\n';
+	login[i + 1] = 0;
 	return login;
 }
 int main(int argc, char *argv[]) {
@@ -181,7 +185,7 @@ int main(int argc, char *argv[]) {
 	}
 	// get other vars from command
 	char * users_file = argv[1];
-	//char * dir_path = argv[2];
+	char * dir_path = argv[2];
 	char * users[MAX_USERS];
 	int i;
 	for (i = 0; i < MAX_USERS; i++) {
@@ -198,13 +202,15 @@ int main(int argc, char *argv[]) {
 	int j;
 	for (j = 0; j < usersNum; j++) {
 		char * folderName = calloc(sizeof(char), 256);
-		strcat(folderName, "SERVER/DATA/");
+		strcat(folderName, dir_path);
+		strcat(folderName, "/");
 		strcat(folderName, getUserName(users, j));
-		int res = mkdir(folderName, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-		if (res!=0){
-			perror("MKDIR failed.");
-			exit(1);
-		}
+		mkdir(folderName, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+		//if (res < 0) {
+		//	printf("%s", folderName);
+		//	perror("MKDIR failed.");
+		//	exit(1);
+		//}
 	}
 	int userSocket = -1;
 	Message inMsg;
@@ -227,31 +233,31 @@ int main(int argc, char *argv[]) {
 			if (userID != -1) {
 				username = getUserName(users, userID);
 				loggedIn = 1;
-				outMsg = createStatusMessage(username);
+				outMsg = createStatusMessage(username,dir_path);
 			} else
 				outMsg = createFailMessage();
 			free(loginAttempt);
 			break;
 		case list_of_filesMSG: // list_of_files request
 			if (loggedIn) {
-				outMsg = createFileListMessage(username);
+				outMsg = createFileListMessage(username,dir_path);
 			} else
 				outMsg = createFailMessage();
 			break;
 		case delete_fileMSG: // delete file from server request
-			if (loggedIn && (0 == deleteFile(username, inMsg.value)))
+			if (loggedIn && (0 == deleteFile(username, inMsg.value,dir_path)))
 				outMsg = createSuccessMessage();
 			else
 				outMsg = createFailMessage();
 			break;
 		case transfer_fileMSG: // file_transfer (to server)
-			if (loggedIn && (0 == addFile(username, inMsg.value, buffer)))
+			if (loggedIn && (0 == addFile(username, inMsg.value, buffer,dir_path)))
 				outMsg = createSuccessMessage();
 			else
 				outMsg = createFailMessage();
 			break;
 		case get_fileMSG: // file_request (from server)
-			if (loggedIn && (0 == getFile(username, inMsg.value, buffer))) {
+			if (loggedIn && (0 == getFile(username, inMsg.value, buffer,dir_path))) {
 				outMsg = createMessagefromTwoStrings(transfer_fileMSG,
 						inMsg.value, buffer);
 			} else

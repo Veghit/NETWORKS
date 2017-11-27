@@ -95,7 +95,7 @@ Message createMessagefromString(message_type t, char* str) {
 		msg.value[i] = str[i];
 		i += 1;
 	}
-	msg.length = i;
+	msg.length = i + 1;
 	while (i < BUFFER_SIZE) {
 		msg.value[i] = 0;
 		i += 1;
@@ -120,7 +120,7 @@ Message createMessagefromTwoStrings(message_type t, char* str1, char * str2) {
 		msg.value[i + j] = str2[j];
 		j += 1;
 	}
-	msg.length = i + j;
+	msg.length = i + j + 1;
 
 	while (i + j < BUFFER_SIZE) {
 		msg.value[i + j] = 0;
@@ -180,14 +180,15 @@ Message receiveMessage(int socket) {
 		msg.value[i] = 0;
 		i += 1;
 	}
+	printf("received:");
 	printMessage(msg);
 	return msg;
 }
 
 void printMessage(Message msg) {
-	printf("Protocol ID:%d, type:%d, length:%d, value:%s\n",
+	printf("Protocol ID:%d, type:%d, length:%d\n",
 			msg.protocol_id[0] * 256 + msg.protocol_id[1], msg.msg_type,
-			msg.length, msg.value);
+			msg.length);
 }
 
 #endif /* MAIN_H_ */

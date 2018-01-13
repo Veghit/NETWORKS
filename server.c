@@ -5,6 +5,7 @@ char * DATA_PATH;
 int LOGIN[MAX_USERS];
 char BUFFER[MAX_FILE_SIZE];
 int USERS_NUM = 0;
+FILE *MsgsFiles[MAX_USERS];
 
 int parseUsersFile(char * users_file, char * users[]) {
 
@@ -100,6 +101,17 @@ Message createUsersOnlineMessage() {
 	strcat(strList, "\n");
 	Message msg = createMessagefromString(usersOnlineResMsg, strList);
 	free(strList);
+	return msg;
+}
+
+Message createMyMessages(int userID) {
+	FILE *fp = MsgsFiles[userID];
+	fread(BUFFER, sizeof(char), BUFFER_SIZE, fp);
+	if (ftruncate(fp, 0) == -1) { //Delete file content
+		perror("Could not truncate");
+	}
+	fclose(fp);
+	Message msg = createMessagefromString(transfer_fileMSG, BUFFER);
 	return msg;
 }
 int deleteFile(char * username, char * filename, char * dataPath) {
@@ -251,6 +263,7 @@ int main(int argc, char *argv[]) {
 		char * folderName = calloc(sizeof(char), 256);
 		strcat(folderName, DATA_PATH);
 		strcat(folderName, "/");
+		MsgsFiles[i] = fopen(folderName, "r+"); //Create file for msgs
 		char * temp = getUserName(AUTH, j);
 		strcat(folderName, temp);
 		free(temp);
@@ -322,10 +335,21 @@ int main(int argc, char *argv[]) {
 	}
 }
 
+void writeToMyMessages(char * user, char * text) {
+	// add a line to the messages file of user.
+}
+int sendChat(char* toUser, char* theMsg) {
+	return 0;
+}
+
+int getUserSocket(char* user) {
+
+}
+
 Message handleClientMsg(Message inMsg, int socket) {
 	Message outMsg;
 	char * loginAttempt;
-	int j;
+	int j, receiveSocket;
 
 	switch (inMsg.msg_type) {
 	case loginMSG: // login message
@@ -383,6 +407,16 @@ Message handleClientMsg(Message inMsg, int socket) {
 			outMsg = createUsersOnlineMessage();
 		else
 			outMsg = createFailMessage();
+		break;
+	case sendMsg:
+		receiveSocket = -1;
+		if (getUserSocket(0) == -1)
+			writeToMyMessages(0, "");
+		else
+			sendChat(0, "");
+		break;
+	case readMsg:
+		outMsg = createMyMessages(LOGIN[socket]);
 		break;
 	default:
 		outMsg = createHelloMessage();

@@ -1,9 +1,9 @@
 all: server user
 
-server:server.c aux.h
+server:server.c header.h
 	gcc -g -Wall -o file_server server.c
 
-user:user.c aux.h
+user:user.c header.h
 	gcc -g -Wall -o file_user user.c
 
 clean: 

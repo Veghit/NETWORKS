@@ -80,6 +80,28 @@ Message createFileListMessage(char * username, char * dataPath) {
 	free(path);
 	return msg;
 }
+
+Message createUsersOnlineMessage() {
+	char * strList = calloc(1, BUFFER_SIZE);
+	strcat(strList, "online users: ");
+	int i, j, first;
+	first = 1;
+	for (i = 0; i < USERS_NUM; i++) {
+		for (j = 0; j < MAX_USERS; j++) {
+			if (LOGIN[j] == i) {
+				if (!first)
+					strcat(strList, ",");
+				strcat(strList, getUserName(AUTH, i));
+				first = 0; // to correctly handle ","
+			}
+		}
+
+	}
+	strcat(strList, "\n");
+	Message msg = createMessagefromString(usersOnlineResMsg, strList);
+	free(strList);
+	return msg;
+}
 int deleteFile(char * username, char * filename, char * dataPath) {
 	char * fullPath = calloc(1, MAX_USERNAME_LENGTH + MAX_FILENAME);
 	sprintf(fullPath, "%s/%s/%s", dataPath, username, filename);
@@ -150,7 +172,6 @@ int make_socket(uint16_t port) {
 	}
 	return sock;
 }
-
 int waitForUser(int welcomeSocket) {
 	int newSocket;
 	struct sockaddr_storage serverStorage;
@@ -203,6 +224,7 @@ int main(int argc, char *argv[]) {
 	struct sockaddr_in clientname;
 	int sock;
 	bzero(BUFFER, MAX_FILE_SIZE);
+	memset(LOGIN, -1, sizeof(int) * MAX_USERS);
 
 	if ((argc != 3) && (argc != 4)) {
 		printf("should receive [users-file] [dir] ?[port]. Received %d args",
@@ -247,7 +269,7 @@ int main(int argc, char *argv[]) {
 	FD_SET(sock, &active_fd_set);
 
 	while (1) { //server never stops
-		printf("server loop \n");
+		printf("server loop: %s \n ", createUsersOnlineMessage().value);
 		/* Block until input arrives on one or more active sockets. */
 		read_fd_set = active_fd_set;
 		if (select(FD_SETSIZE, &read_fd_set, NULL, NULL, NULL) < 0) {
@@ -307,18 +329,18 @@ Message handleClientMsg(Message inMsg, int socket) {
 
 	switch (inMsg.msg_type) {
 	case loginMSG: // login message
-		LOGIN[socket]=-1;
+		LOGIN[socket] = -1;
 		loginAttempt = formatLoginAttempt(inMsg.value);
 		for (j = 0; j < USERS_NUM; j++) {
 			// check if credentials are correct for one of the users.
-			if (0 == strcmp(loginAttempt, AUTH[j]))
-				{
+			if (0 == strcmp(loginAttempt, AUTH[j])) {
 				LOGIN[socket] = j;
-				printf("user ID:%d\n",j);
-				}
+				printf("user ID:%d\n", j);
+			}
 		}
 		if (LOGIN[socket] != -1) {
-			outMsg = createStatusMessage(getUserName(AUTH, LOGIN[socket]), DATA_PATH);
+			outMsg = createStatusMessage(getUserName(AUTH, LOGIN[socket]),
+					DATA_PATH);
 		} else
 			outMsg = createFailMessage();
 		break;
@@ -332,8 +354,8 @@ Message handleClientMsg(Message inMsg, int socket) {
 	case delete_fileMSG: // delete file from server request
 		if ((LOGIN[socket] != -1)
 				&& (0
-						== deleteFile(getUserName(AUTH, LOGIN[socket]), inMsg.value,
-								DATA_PATH)))
+						== deleteFile(getUserName(AUTH, LOGIN[socket]),
+								inMsg.value, DATA_PATH)))
 			outMsg = createSuccessMessage();
 		else
 			outMsg = createFailMessage();
@@ -341,8 +363,8 @@ Message handleClientMsg(Message inMsg, int socket) {
 	case transfer_fileMSG: // file_transfer (to server)
 		if ((LOGIN[socket] != -1)
 				&& (0
-						== addFile(getUserName(AUTH, LOGIN[socket]), inMsg.value,
-								DATA_PATH)))
+						== addFile(getUserName(AUTH, LOGIN[socket]),
+								inMsg.value, DATA_PATH)))
 			outMsg = createSuccessMessage();
 		else
 			outMsg = createFailMessage();
@@ -350,10 +372,16 @@ Message handleClientMsg(Message inMsg, int socket) {
 	case get_fileMSG: // file_request (from server)
 		if ((LOGIN[socket] != -1)
 				&& (0
-						== getFile(getUserName(AUTH, LOGIN[socket]), inMsg.value,
-								BUFFER, DATA_PATH))) {
+						== getFile(getUserName(AUTH, LOGIN[socket]),
+								inMsg.value, BUFFER, DATA_PATH))) {
 			outMsg = createMessagefromString(transfer_fileMSG, BUFFER);
 		} else
+			outMsg = createFailMessage();
+		break;
+	case usersOnlineReqMsg:
+		if (LOGIN[socket] != -1)
+			outMsg = createUsersOnlineMessage();
+		else
 			outMsg = createFailMessage();
 		break;
 	default:

@@ -138,6 +138,8 @@ void parseInputMsg(char msg[], int sockfd) { //Parse input msg and call appropri
 	} else if (strcmp(token, "delete_file") == 0) {
 		token = strtok(NULL, " ");
 		delete_file(sockfd, token);
+	} else if (strcmp(token, "users_online") == 0) {
+		users_online(sockfd);
 	} else if (strcmp(token, "add_file") == 0) {
 		char* path;
 		char* filename;

@@ -16,7 +16,6 @@ void users_online(int clientSocket);
 void msg(int clientSocket, char* user_name_we_send_to, char* the_message);
 void read_msgs(int clientSocket);
 
-
 int main(int argc, char *argv[]) {
 	if ((argc != 3) && (argc != 1)) {
 		printf("should receive 2 or 0 cmd args. Received %d args", argc);
@@ -128,7 +127,6 @@ int initClient(char* ip, int port) { //initialize connection, returns -1 on erro
 }
 
 void parseInputMsg(char msg[], int sockfd) { //Parse input msg and call appropriate function
-
 	char *token;
 	msg[strlen(msg) - 1] = 0;
 	token = strtok(msg, " "); //Get first word from input
@@ -140,6 +138,14 @@ void parseInputMsg(char msg[], int sockfd) { //Parse input msg and call appropri
 		delete_file(sockfd, token);
 	} else if (strcmp(token, "users_online") == 0) {
 		users_online(sockfd);
+	} else if (strcmp(token, "msg") == 0) {
+		char* user;
+		char* message;
+		user = strtok(NULL, " ");
+		message = strtok(NULL, NULL);
+		msg(sockfd, user, message);
+	} else if (strcmp(token, "read_msgs") == 0) {
+		read_msgs(sockfd);
 	} else if (strcmp(token, "add_file") == 0) {
 		char* path;
 		char* filename;
@@ -160,10 +166,10 @@ void parseInputMsg(char msg[], int sockfd) { //Parse input msg and call appropri
 
 }
 
-void users_online(int clientSocket){
-	int status; 
+void users_online(int clientSocket) {
+	int status;
 	Message msg = createMessagefromString(usersOnlineReqMsg, "");
-	
+
 	//Send request to server
 	status = sendMessage(clientSocket, msg);
 	if (status != 0) {
@@ -174,13 +180,12 @@ void users_online(int clientSocket){
 	Message responseMsg = receiveMessage(clientSocket);
 	printf("%s", responseMsg.value);
 
-	
 }
 
-void msg(int clientSocket, char* user_name_we_send_to, char* the_message){
-	int status; 
-	Message msg = createMessagefromString(sendMsg, the_message);
-	
+void msg(int clientSocket, char* user_name_we_send_to, char* the_message) {
+	int status;
+	Message msg = createMessagefromTwoStrings(sendMsg,user_name_we_send_to, the_message);
+
 	//Send request to server
 	status = sendMessage(clientSocket, msg);
 	if (status != 0) {
@@ -192,10 +197,10 @@ void msg(int clientSocket, char* user_name_we_send_to, char* the_message){
 	printf("%s", responseMsg.value);
 }
 
-void read_msgs(int clientSocket){
-	int status; 
-	Message msg = createMessagefromString(readMsg,"");
-	
+void read_msgs(int clientSocket) {
+	int status;
+	Message msg = createMessagefromString(readMsg, "");
+
 	//Send request to server
 	status = sendMessage(clientSocket, msg);
 	if (status != 0) {

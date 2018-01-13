@@ -44,10 +44,10 @@ typedef enum {
 	transfer_fileMSG,
 	get_fileMSG,
 	quitMSG,
-	invalidMSG
-	usersOnlineReqMsg
-	usersOnlineResMsg
-	sendMsg
+	invalidMSG,
+	usersOnlineReqMsg,
+	usersOnlineResMsg,
+	sendMsg,
 	readMsg
 } message_type;
 

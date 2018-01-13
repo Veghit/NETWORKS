@@ -5,7 +5,6 @@ char * DATA_PATH;
 int LOGIN[MAX_USERS];
 char BUFFER[MAX_FILE_SIZE];
 int USERS_NUM = 0;
-FILE *MsgsFiles[MAX_USERS];
 
 int parseUsersFile(char * users_file, char * users[]) {
 
@@ -82,23 +81,27 @@ Message createFileListMessage(char * username, char * dataPath) {
 	return msg;
 }
 
-int sendMsg(char* fromUser, char* toUser, char* theMsg) {
+Message createUsersOnlineMessage() {
+	char * strList = calloc(1, BUFFER_SIZE);
+	strcat(strList, "online users: ");
+	int i, j, first;
+	first = 1;
+	for (i = 0; i < USERS_NUM; i++) {
+		for (j = 0; j < MAX_USERS; j++) {
+			if (LOGIN[j] == i) {
+				if (!first)
+					strcat(strList, ",");
+				strcat(strList, getUserName(AUTH, i));
+				first = 0; // to correctly handle ","
+			}
+		}
 
-}
-
-int readMsg(char* userName) {
-	int sockFd; //TODO get user's socket
-	FILE *fp; //TODO get file
-	fread(BUFFER, sizeof(char), BUFFER_SIZE, fp);
-
-	if (ftruncate(fp, 0) == -1) { //Delete file content 
-		perror	("Could not truncate")
 	}
-	fclose(fp);
-	
-	Message msg = createMessagefromString(transfer_fileMSG, BUFFER);
+	strcat(strList, "\n");
+	Message msg = createMessagefromString(usersOnlineResMsg, strList);
+	free(strList);
+	return msg;
 }
-
 int deleteFile(char * username, char * filename, char * dataPath) {
 	char * fullPath = calloc(1, MAX_USERNAME_LENGTH + MAX_FILENAME);
 	sprintf(fullPath, "%s/%s/%s", dataPath, username, filename);
@@ -157,7 +160,7 @@ int make_socket(uint16_t port) {
 	sock = socket(PF_INET, SOCK_STREAM, 0);
 	if (sock < 0) {
 		perror("socket");
-		exit( EXIT_FAILURE);
+		exit(EXIT_FAILURE);
 	}
 
 	name.sin_family = AF_INET;
@@ -169,7 +172,6 @@ int make_socket(uint16_t port) {
 	}
 	return sock;
 }
-
 int waitForUser(int welcomeSocket) {
 	int newSocket;
 	struct sockaddr_storage serverStorage;
@@ -222,6 +224,7 @@ int main(int argc, char *argv[]) {
 	struct sockaddr_in clientname;
 	int sock;
 	bzero(BUFFER, MAX_FILE_SIZE);
+	memset(LOGIN, -1, sizeof(int) * MAX_USERS);
 
 	if ((argc != 3) && (argc != 4)) {
 		printf("should receive [users-file] [dir] ?[port]. Received %d args",
@@ -234,7 +237,7 @@ int main(int argc, char *argv[]) {
 	int i;
 	for (i = 0; i < MAX_USERS; i++) {
 		AUTH[i] = calloc(sizeof(char),
-				MAX_PASSWORD_LENGTH + MAX_USERNAME_LENGTH + 1);
+		MAX_PASSWORD_LENGTH + MAX_USERNAME_LENGTH + 1);
 	}
 	int port = 1337;
 	if (argc == 4) {
@@ -248,12 +251,10 @@ int main(int argc, char *argv[]) {
 		char * folderName = calloc(sizeof(char), 256);
 		strcat(folderName, DATA_PATH);
 		strcat(folderName, "/");
-		MsgsFile[i] = fopen(folderName, "r+"); //Create file for msgs
 		char * temp = getUserName(AUTH, j);
 		strcat(folderName, temp);
 		free(temp);
 		mkdir(folderName, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-
 		free(folderName);
 	}
 	Message inMsg;
@@ -261,19 +262,19 @@ int main(int argc, char *argv[]) {
 	sock = make_socket(port);
 	if (listen(sock, 1) < 0) {
 		perror("listen");
-		exit( EXIT_FAILURE);
+		exit(EXIT_FAILURE);
 	}
 
 	FD_ZERO(&active_fd_set);
 	FD_SET(sock, &active_fd_set);
 
 	while (1) { //server never stops
-		printf("server loop \n");
+		printf("server loop: %s \n ", createUsersOnlineMessage().value);
 		/* Block until input arrives on one or more active sockets. */
 		read_fd_set = active_fd_set;
 		if (select(FD_SETSIZE, &read_fd_set, NULL, NULL, NULL) < 0) {
 			perror("select");
-			exit( EXIT_FAILURE);
+			exit(EXIT_FAILURE);
 		}
 
 		/* Service all the sockets with input pending. */
@@ -288,35 +289,36 @@ int main(int argc, char *argv[]) {
 					new = accept(sock, (struct sockaddr *) &clientname, &size);
 					if (new < 0) {
 						perror("accept");
-						exit( EXIT_FAILURE);
+						exit(EXIT_FAILURE);
 					}
 					fprintf(stderr, "Server: connect from host %s, port %d.\n",
-							inet_ntoa(clientname.sin_addr), clientname.sin_port);
-FD_SET				(new, &active_fd_set);
-				sendMessage(new, createHelloMessage());
-			} else {
-				printf("serving socket:%d\n", i);
-				/* Data arriving on an already-connected socket. */
-				inMsg = receiveMessage(i);
-				if ((inMsg.msg_type == invalidMSG)
-						|| (inMsg.msg_type == quitMSG)) {
-					printf("closing socket:%d\n", i);
-					LOGIN[i] = 0;
-					close(i);
-					FD_CLR(i, &active_fd_set);
+							inet_ntoa(clientname.sin_addr),
+							clientname.sin_port);
+					FD_SET(new, &active_fd_set);
+					sendMessage(new, createHelloMessage());
 				} else {
-					outMsg = handleClientMsg(inMsg, i);
-
-					if (outMsg.msg_type == invalidMSG) {
+					printf("serving socket:%d\n", i);
+					/* Data arriving on an already-connected socket. */
+					inMsg = receiveMessage(i);
+					if ((inMsg.msg_type == invalidMSG)
+							|| (inMsg.msg_type == quitMSG)) {
 						printf("closing socket:%d\n", i);
 						LOGIN[i] = 0;
 						close(i);
 						FD_CLR(i, &active_fd_set);
+					} else {
+						outMsg = handleClientMsg(inMsg, i);
+
+						if (outMsg.msg_type == invalidMSG) {
+							printf("closing socket:%d\n", i);
+							LOGIN[i] = 0;
+							close(i);
+							FD_CLR(i, &active_fd_set);
+						}
+						sendMessage(i, outMsg);
 					}
-					sendMessage(i, outMsg);
 				}
 			}
-		}
 	}
 }
 
@@ -350,25 +352,36 @@ Message handleClientMsg(Message inMsg, int socket) {
 			outMsg = createFailMessage();
 		break;
 	case delete_fileMSG: // delete file from server request
-		if ((LOGIN[socket] != -1) && (0 == deleteFile(
-				getUserName(AUTH, LOGIN[socket]), inMsg.value, DATA_PATH)))
+		if ((LOGIN[socket] != -1)
+				&& (0
+						== deleteFile(getUserName(AUTH, LOGIN[socket]),
+								inMsg.value, DATA_PATH)))
 			outMsg = createSuccessMessage();
 		else
 			outMsg = createFailMessage();
 		break;
 	case transfer_fileMSG: // file_transfer (to server)
-		if ((LOGIN[socket] != -1) && (0 == addFile(
-				getUserName(AUTH, LOGIN[socket]), inMsg.value, DATA_PATH)))
+		if ((LOGIN[socket] != -1)
+				&& (0
+						== addFile(getUserName(AUTH, LOGIN[socket]),
+								inMsg.value, DATA_PATH)))
 			outMsg = createSuccessMessage();
 		else
 			outMsg = createFailMessage();
 		break;
 	case get_fileMSG: // file_request (from server)
-		if ((LOGIN[socket] != -1) && (0 == getFile(
-				getUserName(AUTH, LOGIN[socket]), inMsg.value, BUFFER,
-				DATA_PATH))) {
+		if ((LOGIN[socket] != -1)
+				&& (0
+						== getFile(getUserName(AUTH, LOGIN[socket]),
+								inMsg.value, BUFFER, DATA_PATH))) {
 			outMsg = createMessagefromString(transfer_fileMSG, BUFFER);
 		} else
+			outMsg = createFailMessage();
+		break;
+	case usersOnlineReqMsg:
+		if (LOGIN[socket] != -1)
+			outMsg = createUsersOnlineMessage();
+		else
 			outMsg = createFailMessage();
 		break;
 	default:

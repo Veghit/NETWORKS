@@ -2,8 +2,9 @@
 fd_set read_fds;
 char * AUTH[MAX_USERS];
 char * DATA_PATH;
-char LOGIN[MAX_USERS];
+int LOGIN[MAX_USERS];
 char BUFFER[MAX_FILE_SIZE];
+int USERS_NUM = 0;
 
 int parseUsersFile(char * users_file, char * users[]) {
 
@@ -26,7 +27,7 @@ char * getUserName(char * users[], int j) {
 	char * username = calloc(sizeof(char), 1 + MAX_USERNAME_LENGTH);
 	int i = 0;
 	while (i < MAX_USERNAME_LENGTH) {
-		if (users[j][i] == ' ')
+		if (users[j][i] == '	')
 			break;
 		username[i] = users[j][i];
 		i += 1;
@@ -143,9 +144,9 @@ int make_socket(uint16_t port) {
 	name.sin_family = AF_INET;
 	name.sin_port = htons(port);
 	name.sin_addr.s_addr = htonl(INADDR_ANY);
-	if (bind(sock, (struct sockaddr *) &name, sizeof(name)) < 0) {
-		perror("bind");
-		exit(EXIT_FAILURE);
+	while (bind(sock, (struct sockaddr *) &name, sizeof(name)) < 0) {
+		//perror("bind");
+		//exit(EXIT_FAILURE);
 	}
 	return sock;
 }
@@ -221,10 +222,10 @@ int main(int argc, char *argv[]) {
 		port = atoi(argv[3]); // get port from cmd arg
 	}
 	// read users file
-	int usersNum = parseUsersFile(users_file, AUTH);
+	USERS_NUM = parseUsersFile(users_file, AUTH);
 	// open a folder for each user
 	int j;
-	for (j = 0; j < usersNum; j++) {
+	for (j = 0; j < USERS_NUM; j++) {
 		char * folderName = calloc(sizeof(char), 256);
 		strcat(folderName, DATA_PATH);
 		strcat(folderName, "/");
@@ -302,23 +303,28 @@ int main(int argc, char *argv[]) {
 Message handleClientMsg(Message inMsg, int socket) {
 	Message outMsg;
 	char * loginAttempt;
-	int j, usersNum, userID = LOGIN[socket];
+	int j;
 
 	switch (inMsg.msg_type) {
 	case loginMSG: // login message
+		LOGIN[socket]=-1;
 		loginAttempt = formatLoginAttempt(inMsg.value);
-		for (j = 0; j < usersNum; j++) {
+		for (j = 0; j < USERS_NUM; j++) {
+			// check if credentials are correct for one of the users.
 			if (0 == strcmp(loginAttempt, AUTH[j]))
+				{
 				LOGIN[socket] = j;
+				printf("user ID:%d\n",j);
+				}
 		}
 		if (LOGIN[socket] != -1) {
-			outMsg = createStatusMessage(getUserName(AUTH, userID), DATA_PATH);
+			outMsg = createStatusMessage(getUserName(AUTH, LOGIN[socket]), DATA_PATH);
 		} else
 			outMsg = createFailMessage();
 		break;
 	case list_of_filesMSG: // list_of_files request
 		if (LOGIN[socket] != -1) {
-			outMsg = createFileListMessage(getUserName(AUTH, userID),
+			outMsg = createFileListMessage(getUserName(AUTH, LOGIN[socket]),
 					DATA_PATH);
 		} else
 			outMsg = createFailMessage();
@@ -326,7 +332,7 @@ Message handleClientMsg(Message inMsg, int socket) {
 	case delete_fileMSG: // delete file from server request
 		if ((LOGIN[socket] != -1)
 				&& (0
-						== deleteFile(getUserName(AUTH, userID), inMsg.value,
+						== deleteFile(getUserName(AUTH, LOGIN[socket]), inMsg.value,
 								DATA_PATH)))
 			outMsg = createSuccessMessage();
 		else
@@ -335,7 +341,7 @@ Message handleClientMsg(Message inMsg, int socket) {
 	case transfer_fileMSG: // file_transfer (to server)
 		if ((LOGIN[socket] != -1)
 				&& (0
-						== addFile(getUserName(AUTH, userID), inMsg.value,
+						== addFile(getUserName(AUTH, LOGIN[socket]), inMsg.value,
 								DATA_PATH)))
 			outMsg = createSuccessMessage();
 		else
@@ -344,7 +350,7 @@ Message handleClientMsg(Message inMsg, int socket) {
 	case get_fileMSG: // file_request (from server)
 		if ((LOGIN[socket] != -1)
 				&& (0
-						== getFile(getUserName(AUTH, userID), inMsg.value,
+						== getFile(getUserName(AUTH, LOGIN[socket]), inMsg.value,
 								BUFFER, DATA_PATH))) {
 			outMsg = createMessagefromString(transfer_fileMSG, BUFFER);
 		} else

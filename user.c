@@ -12,6 +12,10 @@ void list_of_files(int clientSocket);
 void add_file(int clientSocket, char* path_to_file, char* newFileName);
 void delete_file(int clientSocket, char* filename);
 void get_file(int clientSocket, char* file_name, char* path_to_save);
+void users_online(int clientSocket);
+void msg(int clientSocket, char* user_name_we_send_to, char* the_message);
+void read_msgs(int clientSocket);
+
 
 int main(int argc, char *argv[]) {
 	if ((argc != 3) && (argc != 1)) {
@@ -152,6 +156,53 @@ void parseInputMsg(char msg[], int sockfd) { //Parse input msg and call appropri
 		printf("Error: unexpected message\n");
 	}
 
+}
+
+void users_online(int clientSocket){
+	int status; 
+	Message msg = createMessagefromString(usersOnlineReqMsg, "");
+	
+	//Send request to server
+	status = sendMessage(clientSocket, msg);
+	if (status != 0) {
+		perror("Error sending usersOnlineReqMsg msg");
+	}
+
+	//Recieve response
+	Message responseMsg = receiveMessage(clientSocket);
+	printf("%s", responseMsg.value);
+
+	
+}
+
+void msg(int clientSocket, char* user_name_we_send_to, char* the_message){
+	int status; 
+	Message msg = createMessagefromString(sendMsg, the_message);
+	
+	//Send request to server
+	status = sendMessage(clientSocket, msg);
+	if (status != 0) {
+		perror("Error sending sendMsg msg");
+	}
+
+	//Recieve response
+	Message responseMsg = receiveMessage(clientSocket);
+	printf("%s", responseMsg.value);
+}
+
+void read_msgs(int clientSocket){
+	int status; 
+	Message msg = createMessagefromString(readMsg,"");
+	
+	//Send request to server
+	status = sendMessage(clientSocket, msg);
+	if (status != 0) {
+		perror("Error sending readMsg msg");
+	}
+
+	//Recieve response
+	Message responseMsg = receiveMessage(clientSocket);
+	printf("%s", responseMsg.value);
 }
 
 void list_of_files(int clientSocket) {

@@ -45,6 +45,10 @@ typedef enum {
 	get_fileMSG,
 	quitMSG,
 	invalidMSG
+	usersOnlineReqMsg
+	usersOnlineResMsg
+	sendMsg
+	readMsg
 } message_type;
 
 typedef struct msg_t {

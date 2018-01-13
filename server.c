@@ -1,4 +1,10 @@
-#include "aux.h"
+#include "header.h"
+fd_set read_fds;
+char * AUTH[MAX_USERS];
+char * DATA_PATH;
+char LOGIN[MAX_USERS];
+char BUFFER[MAX_FILE_SIZE];
+
 int parseUsersFile(char * users_file, char * users[]) {
 
 	int n = 0;
@@ -10,7 +16,6 @@ int parseUsersFile(char * users_file, char * users[]) {
 	}
 	char line[MAX_USERNAME_LENGTH + MAX_PASSWORD_LENGTH + 1];
 	while (fgets(line, sizeof(line), file)) {
-		//printf("%s", line);
 		strcpy(users[n], line);
 		n += 1;
 	}
@@ -39,7 +44,6 @@ Message createStatusMessage(char * username, char * dataPath) {
 	DIR * dirp;
 	char * path = calloc(1, MAX_FILENAME);
 	sprintf(path, "%s/%s/", dataPath, username);
-	//printf("trying to open %s",path);
 	struct dirent * entry;
 	dirp = opendir(path);
 	while ((entry = readdir(dirp)) != NULL) {
@@ -119,7 +123,6 @@ int getFile(char * username, char * filename, char * fileContent,
 	int i = 0;
 	char cur;
 	while ((cur = fgetc(file)) != EOF) {
-		//printf("%s", line);
 		fileContent[i] = cur;
 		i += 1;
 	}
@@ -127,50 +130,36 @@ int getFile(char * username, char * filename, char * fileContent,
 	free(fullPath);
 	return 0;
 }
-int connectServer(int port) {
-	// connect TCP
-	int welcomeSocket;
-	struct sockaddr_in serverAddr;
+int make_socket(uint16_t port) {
+	int sock;
+	struct sockaddr_in name;
 
-	welcomeSocket = socket(PF_INET, SOCK_STREAM, 0);
-
-	if (welcomeSocket < 0) {
-		perror("ERROR on accept");
-		exit(1);
-	}
-	if (setsockopt(welcomeSocket, SOL_SOCKET, SO_REUSEADDR, &(int ) { 1 },
-			sizeof(int)) < 0) {
-		perror("ERROR on accept");
-		exit(1);
+	sock = socket(PF_INET, SOCK_STREAM, 0);
+	if (sock < 0) {
+		perror("socket");
+		exit(EXIT_FAILURE);
 	}
 
-	//if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &(int){ 1 }, sizeof(int)) < 0) // fix to bind problem.
-	//   error("setsockopt(SO_REUSEADDR) failed");
-	serverAddr.sin_family = AF_INET;
-	serverAddr.sin_port = htons(port);
-	serverAddr.sin_addr.s_addr = INADDR_ANY;
-	memset(serverAddr.sin_zero, '\0', sizeof serverAddr.sin_zero);
-
-	if (bind(welcomeSocket, (struct sockaddr *) &serverAddr, sizeof(serverAddr))
-			< 0) {
-		perror("ERROR on binding");
-		exit(1);
+	name.sin_family = AF_INET;
+	name.sin_port = htons(port);
+	name.sin_addr.s_addr = htonl(INADDR_ANY);
+	if (bind(sock, (struct sockaddr *) &name, sizeof(name)) < 0) {
+		perror("bind");
+		exit(EXIT_FAILURE);
 	}
-	return welcomeSocket;
+	return sock;
 }
 
 int waitForUser(int welcomeSocket) {
 	int newSocket;
 	struct sockaddr_storage serverStorage;
 	socklen_t addr_size;
-
 	if (listen(welcomeSocket, 5) == 0)
 		printf("Listening\n");
 	else {
 		perror("ERROR on listen");
 		exit(1);
 	}
-
 	addr_size = sizeof serverStorage;
 	newSocket = accept(welcomeSocket, (struct sockaddr *) &serverStorage,
 			&addr_size);
@@ -188,14 +177,16 @@ Message createSuccessMessage() {
 	Message msg = createMessagefromString(successMSG, "");
 	return msg;
 }
+// str is the received NULL separated string from the user. It returns the properly formated string.
 char * formatLoginAttempt(char str[]) {
+	//printf("LOGIN ATTEMPT:  %s\n" ,str);
 	char * login = calloc(1, MAX_PASSWORD_LENGTH + MAX_USERNAME_LENGTH + 1);
 	int i = 0;
 	while (str[i]) {
 		login[i] = str[i];
 		i = i + 1;
 	}
-	login[i] = ' ';
+	login[i] = '\t';
 	i = i + 1;
 	while (str[i] && (i < MAX_PASSWORD_LENGTH + MAX_USERNAME_LENGTH + 1)) {
 		login[i] = str[i];
@@ -206,17 +197,23 @@ char * formatLoginAttempt(char str[]) {
 	return login;
 }
 int main(int argc, char *argv[]) {
+	fd_set active_fd_set, read_fd_set;
+	size_t size;
+	struct sockaddr_in clientname;
+	int sock;
+	bzero(BUFFER, MAX_FILE_SIZE);
+
 	if ((argc != 3) && (argc != 4)) {
-		printf("should receive 3 or 4 cmd args. Received %d args", argc);
+		printf("should receive [users-file] [dir] ?[port]. Received %d args",
+				argc);
 		return 1;
 	}
 	// get other vars from command
 	char * users_file = argv[1];
-	char * dir_path = argv[2];
-	char * users[MAX_USERS];
+	DATA_PATH = argv[2];
 	int i;
 	for (i = 0; i < MAX_USERS; i++) {
-		users[i] = calloc(sizeof(char),
+		AUTH[i] = calloc(sizeof(char),
 		MAX_PASSWORD_LENGTH + MAX_USERNAME_LENGTH + 1);
 	}
 	int port = 1337;
@@ -224,95 +221,138 @@ int main(int argc, char *argv[]) {
 		port = atoi(argv[3]); // get port from cmd arg
 	}
 	// read users file
-	int usersNum = parseUsersFile(users_file, users);
+	int usersNum = parseUsersFile(users_file, AUTH);
 	// open a folder for each user
 	int j;
 	for (j = 0; j < usersNum; j++) {
 		char * folderName = calloc(sizeof(char), 256);
-		strcat(folderName, dir_path);
+		strcat(folderName, DATA_PATH);
 		strcat(folderName, "/");
-		char * temp = getUserName(users, j);
+		char * temp = getUserName(AUTH, j);
 		strcat(folderName, temp);
 		free(temp);
-		int res = mkdir(folderName, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+		mkdir(folderName, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
 		free(folderName);
-		if (res < 0) {
-			//printf("%s", folderName);
-			//perror("MKDIR failed.");
-			//exit(1);
-		}
 	}
-	int userSocket = -1;
 	Message inMsg;
 	Message outMsg;
-	inMsg.msg_type = quitMSG; // we initiate to this value because after quitting we have the same state as in the beginning
-	char userID = -1, loggedIn;
-	char * loginAttempt;
-	char * username;
-	char buffer[MAX_FILE_SIZE];
-	bzero(buffer, MAX_FILE_SIZE);
-	int serverSocket = connectServer(port);
+	sock = make_socket(port);
+	if (listen(sock, 1) < 0) {
+		perror("listen");
+		exit(EXIT_FAILURE);
+	}
+
+	FD_ZERO(&active_fd_set);
+	FD_SET(sock, &active_fd_set);
 
 	while (1) { //server never stops
-		switch (inMsg.msg_type) {
-		case loginMSG: // login message
-			loginAttempt = formatLoginAttempt(inMsg.value);
-			for (j = 0; j < usersNum; j++) {
-				if (0 == strcmp(loginAttempt, users[j]))
-					userID = j;
-			}
-			if (userID != -1) {
-				free(username);
-				username = getUserName(users, userID);
-				loggedIn = 1;
-				outMsg = createStatusMessage(username, dir_path);
-			} else
-				outMsg = createFailMessage();
-			free(loginAttempt);
-			break;
-		case list_of_filesMSG: // list_of_files request
-			if (loggedIn) {
-				outMsg = createFileListMessage(username, dir_path);
-			} else
-				outMsg = createFailMessage();
-			break;
-		case delete_fileMSG: // delete file from server request
-			if (loggedIn && (0 == deleteFile(username, inMsg.value, dir_path)))
-				outMsg = createSuccessMessage();
-			else
-				outMsg = createFailMessage();
-			break;
-		case transfer_fileMSG: // file_transfer (to server)
-			if (loggedIn && (0 == addFile(username, inMsg.value, dir_path)))
-
-				outMsg = createSuccessMessage();
-			else
-				outMsg = createFailMessage();
-			break;
-		case get_fileMSG: // file_request (from server)
-			if (loggedIn
-					&& (0 == getFile(username, inMsg.value, buffer, dir_path))) {
-				outMsg = createMessagefromString(transfer_fileMSG, buffer);
-			} else
-				outMsg = createFailMessage();
-			break;
-		default:
-			if (userSocket != -1) //need to close the socket
-					{
-				if (-1 == close(userSocket)) {
-					perror("could not close socket.");
-					exit(1);
-				} else
-					printf("user socket closed,\n");
-			}
-			userSocket = waitForUser(serverSocket);
-			printf("a user was connected.\n");
-			outMsg = createHelloMessage();
-			loggedIn = 0;
-			userID = -1;
-			break;
+		printf("server loop \n");
+		/* Block until input arrives on one or more active sockets. */
+		read_fd_set = active_fd_set;
+		if (select(FD_SETSIZE, &read_fd_set, NULL, NULL, NULL) < 0) {
+			perror("select");
+			exit(EXIT_FAILURE);
 		}
-		sendMessage(userSocket, outMsg); // reply to the user
-		inMsg = receiveMessage(userSocket); //read the next message
+
+		/* Service all the sockets with input pending. */
+		for (i = 0; i < FD_SETSIZE; ++i)
+			if (FD_ISSET(i, &read_fd_set)) {
+				if (i == sock) {
+					printf("new socket:%d\n", i);
+					LOGIN[i] = -1;
+					/* Connection request on original socket. */
+					int new;
+					size = sizeof(clientname);
+					new = accept(sock, (struct sockaddr *) &clientname, &size);
+					if (new < 0) {
+						perror("accept");
+						exit(EXIT_FAILURE);
+					}
+					fprintf(stderr, "Server: connect from host %s, port %d.\n",
+							inet_ntoa(clientname.sin_addr),
+							clientname.sin_port);
+					FD_SET(new, &active_fd_set);
+					sendMessage(new, createHelloMessage());
+				} else {
+					printf("serving socket:%d\n", i);
+					/* Data arriving on an already-connected socket. */
+					inMsg = receiveMessage(i);
+					if ((inMsg.msg_type == invalidMSG)
+							|| (inMsg.msg_type == quitMSG)) {
+						printf("closing socket:%d\n", i);
+						LOGIN[i] = 0;
+						close(i);
+						FD_CLR(i, &active_fd_set);
+					} else {
+						outMsg = handleClientMsg(inMsg, i);
+
+						if (outMsg.msg_type == invalidMSG) {
+							printf("closing socket:%d\n", i);
+							LOGIN[i] = 0;
+							close(i);
+							FD_CLR(i, &active_fd_set);
+						}
+						sendMessage(i, outMsg);
+					}
+				}
+			}
 	}
+}
+
+Message handleClientMsg(Message inMsg, int socket) {
+	Message outMsg;
+	char * loginAttempt;
+	int j, usersNum, userID = LOGIN[socket];
+
+	switch (inMsg.msg_type) {
+	case loginMSG: // login message
+		loginAttempt = formatLoginAttempt(inMsg.value);
+		for (j = 0; j < usersNum; j++) {
+			if (0 == strcmp(loginAttempt, AUTH[j]))
+				LOGIN[socket] = j;
+		}
+		if (LOGIN[socket] != -1) {
+			outMsg = createStatusMessage(getUserName(AUTH, userID), DATA_PATH);
+		} else
+			outMsg = createFailMessage();
+		break;
+	case list_of_filesMSG: // list_of_files request
+		if (LOGIN[socket] != -1) {
+			outMsg = createFileListMessage(getUserName(AUTH, userID),
+					DATA_PATH);
+		} else
+			outMsg = createFailMessage();
+		break;
+	case delete_fileMSG: // delete file from server request
+		if ((LOGIN[socket] != -1)
+				&& (0
+						== deleteFile(getUserName(AUTH, userID), inMsg.value,
+								DATA_PATH)))
+			outMsg = createSuccessMessage();
+		else
+			outMsg = createFailMessage();
+		break;
+	case transfer_fileMSG: // file_transfer (to server)
+		if ((LOGIN[socket] != -1)
+				&& (0
+						== addFile(getUserName(AUTH, userID), inMsg.value,
+								DATA_PATH)))
+			outMsg = createSuccessMessage();
+		else
+			outMsg = createFailMessage();
+		break;
+	case get_fileMSG: // file_request (from server)
+		if ((LOGIN[socket] != -1)
+				&& (0
+						== getFile(getUserName(AUTH, userID), inMsg.value,
+								BUFFER, DATA_PATH))) {
+			outMsg = createMessagefromString(transfer_fileMSG, BUFFER);
+		} else
+			outMsg = createFailMessage();
+		break;
+	default:
+		outMsg = createHelloMessage();
+	}
+	printMessage(inMsg);
+	return outMsg;
 }

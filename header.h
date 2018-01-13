@@ -23,7 +23,7 @@
 #ifndef MAIN_H_
 #define MAIN_H_
 
-#define MAX_USERS 15
+#define MAX_USERS 1024
 #define MAX_FILES_PER_USER 15
 #define MAX_FILE_SIZE 512
 #define MAX_USERNAME_LENGTH 25
@@ -59,6 +59,7 @@ void printMessage(Message msg);
 int sendMessage(int userSocket, Message msg) {
 	//printf("trying to send:");
 	//printMessage(msg);
+
 	char buf[BUFFER_SIZE];
 	buf[0] = msg.protocol_id[0];
 	buf[1] = msg.protocol_id[1];
@@ -134,6 +135,7 @@ Message createMessagefromTwoStrings(message_type t, char* str1, char * str2) {
 // This assumes buffer is at least x bytes long,
 // and that the socket is blocking.
 Message receiveMessage(int socket) {
+	//printf("receiving MSG now.\n");
 	Message msg;
 	int minLen = 5;
 	int bytesRead = 0;
@@ -141,12 +143,10 @@ Message receiveMessage(int socket) {
 	char buf[BUFFER_SIZE];
 	while (bytesRead < minLen) {
 		result = read(socket, buf + bytesRead, minLen - bytesRead);
-		if (result < 1) {
-			printf("ERROR reading from socket.");
+		if (result < 0) {
+			perror("read");
 			msg.msg_type = invalidMSG;
-			//printMessage(msg);
 			return msg;
-			//exit(1);
 		}
 
 		bytesRead += result;
@@ -156,9 +156,7 @@ Message receiveMessage(int socket) {
 	msg.msg_type = buf[2];
 	msg.length = buf[3] * 256 + buf[4];
 	if (msg.length > BUFFER_SIZE) {
-		//perror("invalid message received.");
 		msg.msg_type = invalidMSG;
-		//printMessage(msg);
 		return msg;
 	}
 
@@ -180,8 +178,10 @@ Message receiveMessage(int socket) {
 		msg.value[i] = 0;
 		i += 1;
 	}
+
 	//printf("received:");
 	//printMessage(msg);
+
 	return msg;
 }
 
@@ -192,3 +192,5 @@ void printMessage(Message msg) {
 }
 
 #endif /* MAIN_H_ */
+
+Message handleClientMsg(Message inMsg, int userID);

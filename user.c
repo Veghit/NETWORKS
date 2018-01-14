@@ -142,8 +142,9 @@ void parseInputMsg(char msg[], int sockfd) { //Parse input msg and call appropri
 		char* user;
 		char* message;
 		user = strtok(NULL, " ");
-		message = strtok(NULL, NULL);
-		msg(sockfd, user, message);
+		message = strtok(NULL, "");
+		user[strlen(user) - 1] = 0; //null the ":"
+		send_chat(sockfd, user, message);
 	} else if (strcmp(token, "read_msgs") == 0) {
 		read_msgs(sockfd);
 	} else if (strcmp(token, "add_file") == 0) {
@@ -182,9 +183,10 @@ void users_online(int clientSocket) {
 
 }
 
-void msg(int clientSocket, char* user_name_we_send_to, char* the_message) {
+void send_chat(int clientSocket, char* user_name_we_send_to, char* the_message) {
 	int status;
-	Message msg = createMessagefromTwoStrings(sendMsg,user_name_we_send_to, the_message);
+	Message msg = createMessagefromTwoStrings(sendMsg, user_name_we_send_to,
+			the_message);
 
 	//Send request to server
 	status = sendMessage(clientSocket, msg);

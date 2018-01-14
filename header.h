@@ -61,8 +61,8 @@ typedef struct msg_t {
 void printMessage(Message msg);
 
 int sendMessage(int userSocket, Message msg) {
-	//printf("trying to send:");
-	//printMessage(msg);
+	printf("trying to send:");
+	printMessage(msg);
 
 	char buf[BUFFER_SIZE];
 	buf[0] = msg.protocol_id[0];
@@ -86,8 +86,8 @@ int sendMessage(int userSocket, Message msg) {
 		}
 		bytesWritten += result;
 	}
-	//printf("sent:");
-	//printMessage(msg);
+	printf("sent:");
+	printMessage(msg);
 
 	return 0;
 }
@@ -139,7 +139,7 @@ Message createMessagefromTwoStrings(message_type t, char* str1, char * str2) {
 // This assumes buffer is at least x bytes long,
 // and that the socket is blocking.
 Message receiveMessage(int socket) {
-	//printf("receiving MSG now.\n");
+	printf("receiving MSG now.\n");
 	Message msg;
 	int minLen = 5;
 	int bytesRead = 0;
@@ -183,8 +183,8 @@ Message receiveMessage(int socket) {
 		i += 1;
 	}
 
-	//printf("received:");
-	//printMessage(msg);
+	printf("received:");
+	printMessage(msg);
 
 	return msg;
 }

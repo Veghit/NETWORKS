@@ -25,6 +25,8 @@ int parseUsersFile(char * users_file, char * users[]) {
 	return n;
 }
 char * getUserName(char * users[], int j) {
+	if (j > USERS_NUM)
+		return "";
 	char * username = calloc(sizeof(char), 1 + MAX_USERNAME_LENGTH);
 	int i = 0;
 	while (i < MAX_USERNAME_LENGTH) {
@@ -338,18 +340,23 @@ int main(int argc, char *argv[]) {
 void writeToMyMessages(char * user, char * text) {
 	// add a line to the messages file of user.
 }
-int sendChat(char* toUser, char* theMsg) {
+int sendChat(int socket, char* fromUser, char* theMsg) {
+	char * str = calloc(BUFFER_SIZE,1);
+	strcat(str, "New Message from ");
+	strcat(str, fromUser);
+	strcat(str, ": ");
+	strcat(str, theMsg);
+	printf("sending socket:%d message:%s \n", socket, str);
+	Message outMsg = createMessagefromString(sendMsg, str);
+	sendMessage(socket, outMsg);
+	free(str);
 	return 0;
-}
-
-int getUserSocket(char* user) {
-
 }
 
 Message handleClientMsg(Message inMsg, int socket) {
 	Message outMsg;
 	char * loginAttempt;
-	int j, receiveSocket;
+	int j, i;
 
 	switch (inMsg.msg_type) {
 	case loginMSG: // login message
@@ -363,63 +370,80 @@ Message handleClientMsg(Message inMsg, int socket) {
 			}
 		}
 		if (LOGIN[socket] != -1) {
-			outMsg = createStatusMessage(getUserName(AUTH, LOGIN[socket]),
+			return createStatusMessage(getUserName(AUTH, LOGIN[socket]),
 					DATA_PATH);
 		} else
-			outMsg = createFailMessage();
+			return createFailMessage();
 		break;
 	case list_of_filesMSG: // list_of_files request
 		if (LOGIN[socket] != -1) {
-			outMsg = createFileListMessage(getUserName(AUTH, LOGIN[socket]),
+			return createFileListMessage(getUserName(AUTH, LOGIN[socket]),
 					DATA_PATH);
 		} else
-			outMsg = createFailMessage();
+			return createFailMessage();
 		break;
 	case delete_fileMSG: // delete file from server request
 		if ((LOGIN[socket] != -1)
 				&& (0
 						== deleteFile(getUserName(AUTH, LOGIN[socket]),
 								inMsg.value, DATA_PATH)))
-			outMsg = createSuccessMessage();
+			return createSuccessMessage();
 		else
-			outMsg = createFailMessage();
+			return createFailMessage();
 		break;
 	case transfer_fileMSG: // file_transfer (to server)
 		if ((LOGIN[socket] != -1)
 				&& (0
 						== addFile(getUserName(AUTH, LOGIN[socket]),
 								inMsg.value, DATA_PATH)))
-			outMsg = createSuccessMessage();
+			return createSuccessMessage();
 		else
-			outMsg = createFailMessage();
+			return createFailMessage();
 		break;
 	case get_fileMSG: // file_request (from server)
 		if ((LOGIN[socket] != -1)
 				&& (0
 						== getFile(getUserName(AUTH, LOGIN[socket]),
 								inMsg.value, BUFFER, DATA_PATH))) {
-			outMsg = createMessagefromString(transfer_fileMSG, BUFFER);
+			return createMessagefromString(transfer_fileMSG, BUFFER);
 		} else
-			outMsg = createFailMessage();
+			return createFailMessage();
 		break;
 	case usersOnlineReqMsg:
 		if (LOGIN[socket] != -1)
-			outMsg = createUsersOnlineMessage();
+			return createUsersOnlineMessage();
 		else
-			outMsg = createFailMessage();
+			return createFailMessage();
 		break;
 	case sendMsg:
-		receiveSocket = -1;
-		if (getUserSocket(0) == -1)
-			writeToMyMessages(0, "");
-		else
-			sendChat(0, "");
+		i = 0;
+		while (inMsg.value[i])
+			i++; //skip to user name and get to the message itself;
+		i++; //skip the null separator
+
+		// is recipient connected?
+		for (j = 0; j < MAX_USERS; j++) {
+			if ((LOGIN[j] != -1)
+					&& strcmp(getUserName(AUTH, LOGIN[j]), inMsg.value) == 0) {
+				sendChat(j, getUserName(AUTH, LOGIN[socket]), inMsg.value + i);
+				return createSuccessMessage();
+			}
+		}
+
+		// is recipient a known user?
+		for (j = 0; j < USERS_NUM; j++) {
+			if (strcmp(getUserName(AUTH, j), inMsg.value) == 0) {
+				writeToMyMessages(getUserName(AUTH, j), inMsg.value + i);
+				return createSuccessMessage();
+			}
+		}
+		return createFailMessage();
 		break;
 	case readMsg:
-		outMsg = createMyMessages(LOGIN[socket]);
+		return createMyMessages(LOGIN[socket]);
 		break;
 	default:
-		outMsg = createHelloMessage();
+		return createHelloMessage();
 	}
 	printMessage(inMsg);
 	return outMsg;

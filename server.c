@@ -116,6 +116,20 @@ Message createMyMessages(int userID) {
 	Message msg = createMessagefromString(transfer_fileMSG, BUFFER);
 	return msg;
 }
+
+Message createReadMsg(int i, int socket) {
+	FILE *fp = MsgsFiles[i] ; 
+	fread(BUFFER, sizeof(char), BUFFER_SIZE, fp);
+
+	if (ftruncate(fp, 0) == -1) { //Delete file content 
+		perror	("Could not truncate");
+	}
+	fclose(fp);
+	
+	Message msg = createMessagefromString(transfer_fileMSG, BUFFER);
+	return msg; 
+}
+
 int deleteFile(char * username, char * filename, char * dataPath) {
 	char * fullPath = calloc(1, MAX_USERNAME_LENGTH + MAX_FILENAME);
 	sprintf(fullPath, "%s/%s/%s", dataPath, username, filename);
@@ -263,9 +277,18 @@ int main(int argc, char *argv[]) {
 	int j;
 	for (j = 0; j < USERS_NUM; j++) {
 		char * folderName = calloc(sizeof(char), 256);
+		char* fileName = calloc(sizeof(char), 256);
+		char* jChar = calloc(sizeof(char), 256);
 		strcat(folderName, DATA_PATH);
 		strcat(folderName, "/");
-		MsgsFiles[i] = fopen(folderName, "r+"); //Create file for msgs
+		strcpy(fileName, folderName);
+		sprintf(jChar, "%d", j);
+		strcat(fileName, jChar);
+		MsgsFiles[i] = fopen(fileName, "w+"); //Create file for msgs
+		printf(fileName);
+		if(MsgsFiles[i]== NULL){
+			perror("File wasn't open\n");
+		}
 		char * temp = getUserName(AUTH, j);
 		strcat(folderName, temp);
 		free(temp);
@@ -440,7 +463,7 @@ Message handleClientMsg(Message inMsg, int socket) {
 		return createFailMessage();
 		break;
 	case readMsg:
-		return createMyMessages(LOGIN[socket]);
+		return createReadMsg(LOGIN[socket], socket);
 		break;
 	default:
 		return createHelloMessage();

@@ -13,7 +13,6 @@ void add_file(int clientSocket, char* path_to_file, char* newFileName);
 void delete_file(int clientSocket, char* filename);
 void get_file(int clientSocket, char* file_name, char* path_to_save);
 void users_online(int clientSocket);
-void msg(int clientSocket, char* user_name_we_send_to, char* the_message);
 void read_msgs(int clientSocket);
 
 int main(int argc, char *argv[]) {
@@ -43,13 +42,10 @@ int main(int argc, char *argv[]) {
 	if (responseMsg.msg_type != helloMSG) {
 		printf("Error receiving hello msg \n");
 	}
-
 	int successLogin = 0;
-
 	//Keep getting username and password until authentication succeeds 
 	while (successLogin == 0) {
 		//Get login input from user and send login msg to server
-
 		//printf("User: ");
 		//scanf("%s", username);
 		//printf("Password: ");
@@ -94,13 +90,38 @@ int main(int argc, char *argv[]) {
 	//Get continuous input from user and call appropriate function
 	char input[MAX_INPUT_MSG_LENGTH];
 	//fgets(input, MAX_INPUT_MSG_LENGTH, stdin);
-	while (strcmp(input, "quit") != 0) { //Keep getting input until "quit" is received
-		fgets(input, MAX_INPUT_MSG_LENGTH, stdin);
-		if (strcmp(input, "\n") != 0)
-			parseInputMsg(input, clientSocket);
+	char message[1024];
+	fd_set master;
+	fd_set read_fds;
+	FD_ZERO(&master);
+	FD_ZERO(&read_fds);
+	FD_SET(0, &master);
+	int n;
+	FD_SET(clientSocket, &master); // s is a socket descriptor
+	while (strcmp(input, "quit") != 0) {
+		read_fds = master;
+		//printf("waiting for socket/stdin\n");
+		if (select(clientSocket + 1, &read_fds, NULL, NULL, NULL) == -1) {
+			perror("select:");
+			exit(1);
+		}
+		// if there is data ready to read from the socket
+		if (FD_ISSET(clientSocket, &read_fds)) {
+			//printf("socket data:\n");
+			Message responseMsg = receiveMessage(clientSocket);
+			if (responseMsg.msg_type == sendMsg)
+				printf("%s", responseMsg.value);
+		}
+		// if there is something in stdin
+		if (FD_ISSET(0, &read_fds)) {
+			//printf("stdin data:\n");
+			fgets(input, MAX_INPUT_MSG_LENGTH, stdin);
+			if (strcmp(input, "\n") != 0)
+				parseInputMsg(input, clientSocket);
+		}
 	}
-
 	return 0;
+
 }
 
 int initClient(char* ip, int port) { //initialize connection, returns -1 on errors, otherwise socket

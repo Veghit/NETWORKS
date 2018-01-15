@@ -5,7 +5,6 @@ char * DATA_PATH;
 int LOGIN[MAX_USERS];
 char BUFFER[MAX_FILE_SIZE];
 int USERS_NUM = 0;
-FILE *MsgsFiles[MAX_USERS];
 
 int parseUsersFile(char * users_file, char * users[]) {
 
@@ -106,30 +105,6 @@ Message createUsersOnlineMessage() {
 	return msg;
 }
 
-Message createMyMessages(int userID) {
-	FILE *fp = MsgsFiles[userID];
-	fread(BUFFER, sizeof(char), BUFFER_SIZE, fp);
-	if (ftruncate(fp, 0) == -1) { //Delete file content
-		perror("Could not truncate");
-	}
-	fclose(fp);
-	Message msg = createMessagefromString(transfer_fileMSG, BUFFER);
-	return msg;
-}
-
-Message createReadMsg(int i, int socket) {
-	FILE *fp = MsgsFiles[i] ; 
-	fread(BUFFER, sizeof(char), BUFFER_SIZE, fp);
-
-	if (ftruncate(fp, 0) == -1) { //Delete file content 
-		perror	("Could not truncate");
-	}
-	fclose(fp);
-	
-	Message msg = createMessagefromString(transfer_fileMSG, BUFFER);
-	return msg; 
-}
-
 int deleteFile(char * username, char * filename, char * dataPath) {
 	char * fullPath = calloc(1, MAX_USERNAME_LENGTH + MAX_FILENAME);
 	sprintf(fullPath, "%s/%s/%s", dataPath, username, filename);
@@ -154,7 +129,7 @@ int addFile(char * username, char * fileNameAndContent, char * dataPath) {
 	}
 	fileContent[j - 1] = 0;
 	sprintf(fullPath, "%s/%s/%s", dataPath, username, fileName);
-	printf("%s", fileContent);
+	//printf("%s", fileContent);
 	FILE *file = fopen(fullPath, "w");
 	int res = fputs(fileContent, file);
 	fclose(file);
@@ -277,6 +252,7 @@ int main(int argc, char *argv[]) {
 	int j;
 	for (j = 0; j < USERS_NUM; j++) {
 		char * folderName = calloc(sizeof(char), 256);
+
 		char* fileName = calloc(sizeof(char), 256);
 		char* jChar = calloc(sizeof(char), 256);
 		strcat(folderName, DATA_PATH);
@@ -284,11 +260,7 @@ int main(int argc, char *argv[]) {
 		strcpy(fileName, folderName);
 		sprintf(jChar, "%d", j);
 		strcat(fileName, jChar);
-		MsgsFiles[i] = fopen(fileName, "w+"); //Create file for msgs
-		printf(fileName);
-		if(MsgsFiles[i]== NULL){
-			perror("File wasn't open\n");
-		}
+		fopen(fileName, "w+"); //Create file for msgs
 		char * temp = getUserName(AUTH, j);
 		strcat(folderName, temp);
 		free(temp);
@@ -319,7 +291,7 @@ int main(int argc, char *argv[]) {
 		for (i = 0; i < FD_SETSIZE; ++i)
 			if (FD_ISSET(i, &read_fd_set)) {
 				if (i == sock) {
-					printf("new socket:%d\n", i);
+					//printf("new socket:%d\n", i);
 					LOGIN[i] = -1;
 					/* Connection request on original socket. */
 					int new;
@@ -360,20 +332,44 @@ int main(int argc, char *argv[]) {
 	}
 }
 
-void writeToMyMessages(char * user, char * text) {
-	// add a line to the messages file of user.
+void writeToMyMessages(int userID, char * text) {
+	char * str = calloc(BUFFER_SIZE, 1);
+	char * filePath = calloc(BUFFER_SIZE, 1);
+	char idStr[5];
+	sprintf(idStr, "%d", userID);
+	strcat(str, "Message received from ");
+	strcat(str, getUserName(AUTH, userID));
+	strcat(str, ": ");
+	strcat(str, text);
+	strcat(str, "\n");
+	strcat(filePath, DATA_PATH);
+	strcat(filePath, "/");
+	strcat(filePath, idStr);
+	printf("wrote:%s to file:%s", str, filePath);
+	int fd = open(filePath, O_WRONLY);
+	write(fd, str, strlen(str));
+	close(fd);
+	free(str);
+	free(filePath);
+	return;
 }
 int sendChat(int socket, char* fromUser, char* theMsg) {
-	char * str = calloc(BUFFER_SIZE,1);
+	char * str = calloc(BUFFER_SIZE, 1);
 	strcat(str, "New Message from ");
 	strcat(str, fromUser);
 	strcat(str, ": ");
 	strcat(str, theMsg);
-	printf("sending socket:%d message:%s \n", socket, str);
+	strcat(str, "\n");
+	//printf("sending socket:%d message:%s \n", socket, str);
 	Message outMsg = createMessagefromString(sendMsg, str);
 	sendMessage(socket, outMsg);
 	free(str);
 	return 0;
+}
+
+Message createReadMsg(int i) {
+	Message m;
+	return m;
 }
 
 Message handleClientMsg(Message inMsg, int socket) {
@@ -389,7 +385,7 @@ Message handleClientMsg(Message inMsg, int socket) {
 			// check if credentials are correct for one of the users.
 			if (0 == strcmp(loginAttempt, AUTH[j])) {
 				LOGIN[socket] = j;
-				printf("user ID:%d\n", j);
+				//printf("user ID:%d\n", j);
 			}
 		}
 		if (LOGIN[socket] != -1) {
@@ -456,14 +452,14 @@ Message handleClientMsg(Message inMsg, int socket) {
 		// is recipient a known user?
 		for (j = 0; j < USERS_NUM; j++) {
 			if (strcmp(getUserName(AUTH, j), inMsg.value) == 0) {
-				writeToMyMessages(getUserName(AUTH, j), inMsg.value + i);
+				writeToMyMessages(j, inMsg.value + i);
 				return createSuccessMessage();
 			}
 		}
 		return createFailMessage();
 		break;
 	case readMsg:
-		return createReadMsg(LOGIN[socket], socket);
+		return createReadMsg(LOGIN[socket]);
 		break;
 	default:
 		return createHelloMessage();

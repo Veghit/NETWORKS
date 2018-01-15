@@ -332,16 +332,16 @@ int main(int argc, char *argv[]) {
 	}
 }
 
-void writeToMyMessages(int userID, char * text) {
+void writeToMyMessages(int userID, int from, char * text) {
 	char * str = calloc(BUFFER_SIZE, 1);
-	char * filePath = calloc(BUFFER_SIZE, 1);
-	char idStr[5];
-	sprintf(idStr, "%d", userID);
 	strcat(str, "Message received from ");
-	strcat(str, getUserName(AUTH, userID));
+	strcat(str, getUserName(AUTH, from));
 	strcat(str, ": ");
 	strcat(str, text);
 	strcat(str, "\n");
+	char * filePath = calloc(BUFFER_SIZE, 1);
+	char idStr[5];
+	sprintf(idStr, "%d", userID);
 	strcat(filePath, DATA_PATH);
 	strcat(filePath, "/");
 	strcat(filePath, idStr);
@@ -367,9 +367,26 @@ int sendChat(int socket, char* fromUser, char* theMsg) {
 	return 0;
 }
 
-Message createReadMsg(int i) {
-	Message m = createSuccessMessage();
-	return m;
+Message createReadMsg(int userID) {
+	//FILE *fp = MsgsFiles[i] ;
+	char * filePath = calloc(BUFFER_SIZE, 1);
+	char idStr[5];
+	sprintf(idStr, "%d", userID);
+	strcat(filePath, DATA_PATH);
+	strcat(filePath, "/");
+	strcat(filePath, idStr);
+	int fp = open(filePath, O_RDONLY);
+	if (fp <= 0) {
+		perror("File wasn't open\n");
+	}
+	printf("File opened\n");
+	read(fp, BUFFER, BUFFER_SIZE);
+	close(fp);
+	if (truncate(filePath, 0) == -1) { //Delete file content
+		perror("Could not truncate");
+	}
+	Message msg = createMessagefromString(transfer_fileMSG, BUFFER);
+	return msg;
 }
 
 Message handleClientMsg(Message inMsg, int socket) {
@@ -452,7 +469,7 @@ Message handleClientMsg(Message inMsg, int socket) {
 		// is recipient a known user?
 		for (j = 0; j < USERS_NUM; j++) {
 			if (strcmp(getUserName(AUTH, j), inMsg.value) == 0) {
-				writeToMyMessages(j, inMsg.value + i);
+				writeToMyMessages(j, LOGIN[socket], inMsg.value + i);
 				return createSuccessMessage();
 			}
 		}

@@ -14,6 +14,7 @@ void delete_file(int clientSocket, char* filename);
 void get_file(int clientSocket, char* file_name, char* path_to_save);
 void users_online(int clientSocket);
 void read_msgs(int clientSocket);
+void send_chat(int clientSocket, char* user_name_we_send_to, char* the_message);
 
 int main(int argc, char *argv[]) {
 	if ((argc != 3) && (argc != 1)) {
@@ -90,13 +91,11 @@ int main(int argc, char *argv[]) {
 	//Get continuous input from user and call appropriate function
 	char input[MAX_INPUT_MSG_LENGTH];
 	//fgets(input, MAX_INPUT_MSG_LENGTH, stdin);
-	char message[1024];
 	fd_set master;
 	fd_set read_fds;
 	FD_ZERO(&master);
 	FD_ZERO(&read_fds);
 	FD_SET(0, &master);
-	int n;
 	FD_SET(clientSocket, &master); // s is a socket descriptor
 	while (strcmp(input, "quit") != 0) {
 		read_fds = master;

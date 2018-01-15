@@ -368,7 +368,7 @@ int sendChat(int socket, char* fromUser, char* theMsg) {
 }
 
 Message createReadMsg(int i) {
-	Message m;
+	Message m = createSuccessMessage();
 	return m;
 }
 
